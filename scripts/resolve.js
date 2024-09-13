@@ -1,13 +1,16 @@
-import { DeployFunction } from 'hardhat-deploy/types'
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { constants, utils } from 'ethers'
+const { constants, utils } = require('ethers')
+
+const { ethers } = require('hardhat')
+const { getNamedAccounts } = require('hardhat')
+const tld = 'test'
+const name = 'subik'
+const sha3 = require('web3-utils').sha3
 const { AddressZero, HashZero } = constants
 
-const tld = 'test'
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { getNamedAccounts } = hre
+async function main(hre) {
   const { deployer, owner } = await getNamedAccounts()
 
+  // ENSRegistry is a contract that stores the mappings of names to addresses
   console.log('Deploying Registry')
   const ens = await hre.deployments.deploy('ENSRegistry', {
     from: deployer,
@@ -15,11 +18,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   })
   console.log('Deployed Registry at', ens.address)
 
+  // BaseRegistrarImplementation is a contract that manages the registration of names
   console.log('Deploying Registrar')
-  const registrar = await hre.deployments.deploy('FIFSRegistrar', {
-    from: deployer,
-    args: [ens.address, utils.namehash(tld)],
-  })
+
+  const registrar = await hre.deployments.deploy(
+    'BaseRegistrarImplementation',
+    {
+      from: deployer,
+      args: [ens.address, utils.namehash(tld)],
+    },
+  )
 
   // allow the registrar to create names within the tld namespace
   if (registrar.newlyDeployed) {
@@ -27,14 +35,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       'ENSRegistry',
       { from: deployer },
       'setSubnodeOwner',
-      HashZero,
+      constants.HashZero,
       utils.id(tld),
       registrar.address,
     )
   }
 
-  console.log('Deployed Registrar at', registrar.address)
+  // ETHRegistrarAdmin is a contract that manages the ownership of the registrar
+  const admin = await hre.deployments.deploy('ETHRegistrarAdmin', {
+    from: deployer,
+    args: [registrar.address],
+  })
 
+  // ReverseRegistrar is a contract that manages the reverse resolution of addresses
   console.log('Deploying Reverse Registrar')
   const reverseRegistrar = await hre.deployments.deploy('ReverseRegistrar', {
     from: deployer,
@@ -63,6 +76,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log('Deployed Reverse Registrar at', reverseRegistrar.address)
 
+  // PublicResolver is a contract that resolves addresses for names
   console.log('Deploying Resolver')
   const resolver = await hre.deployments.deploy('PublicResolver', {
     from: deployer,
@@ -86,44 +100,73 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log('Deployed Resolver at', resolver.address)
 
-  // do a test registration
-  const name = 'energy'
-  if (ens.newlyDeployed) {
-    await hre.deployments.execute(
-      'FIFSRegistrar',
-      { from: deployer },
-      'register',
-      utils.id(name),
-      owner,
-    )
-    console.log(`Registered ${name}.${tld} to`, owner)
+  // Transfer ownership of the registrar to the admin contract
+  const registrarOwnableABI = await ethers.getContractAt(
+    'Ownable2',
+    registrar.address,
+  )
+  await registrarOwnableABI.transferOwnership(admin.address)
 
-    await hre.deployments.execute(
-      'ENSRegistry',
-      { from: owner },
-      'setResolver',
-      utils.namehash(`${name}.${tld}`),
-      resolver.address,
-    )
-    console.log(`Set resolver for ${name}.${tld} to`, resolver.address)
+  const registrarAdmin = await ethers.getContractAt(
+    'ETHRegistrarAdmin',
+    admin.address,
+  )
+  console.log('Adding controller..')
 
-    await hre.deployments.execute(
-      'PublicResolver',
-      { from: owner },
-      'setAddr(bytes32,address)',
-      utils.namehash(`${name}.${tld}`),
-      owner,
-    )
-    console.log(`Set forward record for ${name}.${tld} to`, owner)
+  // Create a new proxy for the controller
+  await registrarAdmin.addController(deployer, { from: deployer })
 
-    await hre.deployments.execute(
-      'ReverseRegistrar',
-      { from: owner },
-      'setName',
-      `${name}.${tld}`,
-    )
-    console.log(`Set reverse record for ${owner} to`, `${name}.${tld}`)
-  }
+  console.log('Added controller..')
+
+  // Set controllerProxy as the proxy for deployer which acts as the controller
+  const controllerProxy = await ethers.getContractAt(
+    'ETHRegistrarControllerProxy',
+    await registrarAdmin.getProxyAddress(deployer),
+  )
+
+  const ensRegistry = await ethers.getContractAt('ENSRegistry', ens.address)
+  // Set the registrar as owner of .eth
+  console.log('Setting subnode owner')
+  await ensRegistry.setSubnodeOwner(
+    constants.HashZero,
+    sha3('eth'),
+    registrar.address,
+  )
+
+  console.log('Setting new name')
+
+  await controllerProxy.register(sha3(`${name}`), owner, 86400, {
+    from: deployer,
+  })
+
+  console.log('Setting resolver')
+
+  await hre.deployments.execute(
+    'ENSRegistry',
+    { from: owner },
+    'setResolver',
+    utils.namehash(`${name}.${tld}`),
+    resolver.address,
+  )
+
+  console.log(`Set resolver for ${name}.${tld} to`, resolver.address)
+
+  await hre.deployments.execute(
+    'PublicResolver',
+    { from: owner },
+    'setAddr(bytes32,address)',
+    utils.namehash(`${name}.${tld}`),
+    owner,
+  )
+  console.log(`Set forward record for ${name}.${tld} to`, owner)
+
+  await hre.deployments.execute(
+    'ReverseRegistrar',
+    { from: owner },
+    'setName',
+    `${name}.${tld}`,
+  )
+  console.log(`Set reverse record for ${owner} to`, `${name}.${tld}`)
 
   // test output for stored configuration
   console.log('')
@@ -161,4 +204,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log('Reverse Record:', reverseRecord)
 }
 
-func(hre as HardhatRuntimeEnvironment)
+main(hre)

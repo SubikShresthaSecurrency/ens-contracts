@@ -57,7 +57,7 @@ contract BaseRegistrarImplementation is ERC721, IBaseRegistrar, Ownable {
     }
 
     modifier live() {
-        require(ens.owner(baseNode) == address(this));
+        require(ens.owner(baseNode) == address(this), "Not live");
         _;
     }
 
