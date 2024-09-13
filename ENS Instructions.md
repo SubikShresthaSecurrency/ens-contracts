@@ -1,7 +1,3 @@
----
-title: ENS Instructions
----
-
 # ENS Instructions
 
 #### We have couple of scripts for running the ENS registering and resolving a name process.
