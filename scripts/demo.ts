@@ -3,11 +3,19 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { constants, utils } from 'ethers'
 const { AddressZero, HashZero } = constants
 
-const tld = 'test'
+const tld = 'eth'
+// do a test registration
+const name = 'dtcc'
+const subdomain = 'shyam'
+
+const name2 = 'dtcc2'
+const subdomain2 = 'ram'
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { getNamedAccounts } = hre
   const { deployer, owner } = await getNamedAccounts()
 
+  // Registry is the main contract that stores all the information about the domain
   console.log('Deploying Registry')
   const ens = await hre.deployments.deploy('ENSRegistry', {
     from: deployer,
@@ -15,6 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   })
   console.log('Deployed Registry at', ens.address)
 
+  // Registrar is the contract that manages the registration of names within a TLD
   console.log('Deploying Registrar')
   const registrar = await hre.deployments.deploy('FIFSRegistrar', {
     from: deployer,
@@ -35,6 +44,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log('Deployed Registrar at', registrar.address)
 
+  // Reverse Registrar is a contract that manages the reverse records for the domain like mapping an address to a name
   console.log('Deploying Reverse Registrar')
   const reverseRegistrar = await hre.deployments.deploy('ReverseRegistrar', {
     from: deployer,
@@ -50,7 +60,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       HashZero,
       utils.id('reverse'),
       deployer,
-    )
+    ) //HashZero is the root node and is authorised to be used by deployer
     await hre.deployments.execute(
       'ENSRegistry',
       { from: deployer },
@@ -63,7 +73,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log('Deployed Reverse Registrar at', reverseRegistrar.address)
 
-  console.log('Deploying Resolver')
+  // Public Resolver is a contract that stores the records for the domain
   const resolver = await hre.deployments.deploy('PublicResolver', {
     from: deployer,
     args: [
@@ -86,48 +96,116 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log('Deployed Resolver at', resolver.address)
 
-  // do a test registration
-  const name = 'energy'
-  if (ens.newlyDeployed) {
-    await hre.deployments.execute(
-      'FIFSRegistrar',
-      { from: deployer },
-      'register',
-      utils.id(name),
-      owner,
-    )
-    console.log(`Registered ${name}.${tld} to`, owner)
+  // Register a name to FIFS Registrar - Which makes "owner" as the owner of the name - dtcc.eth. Since .eth is  a tld and already registered in registrar
+  // FIFS is a simple registrar that allows a name to be registered in first in first served basis.
+  // There is Base Registrar as well - which is more complicated with a controller and proxy
+  // It's deployed in resolve.js file
+  await hre.deployments.execute(
+    'FIFSRegistrar',
+    { from: deployer },
+    'register',
+    utils.id(name),
+    owner,
+  )
+  console.log(`Registered ${name}.${tld} to`, owner)
 
-    await hre.deployments.execute(
-      'ENSRegistry',
-      { from: owner },
-      'setResolver',
-      utils.namehash(`${name}.${tld}`),
-      resolver.address,
-    )
-    console.log(`Set resolver for ${name}.${tld} to`, resolver.address)
+  // Set the owner of the subdomain - shyam.dtcc.eth to owner. dtcc.eth is concatenated with shyam as keccak
+  await hre.deployments.execute(
+    'ENSRegistry',
+    { from: owner },
+    'setSubnodeOwner',
+    utils.namehash(`${name}.${tld}`),
+    utils.id(subdomain),
+    owner,
+  )
 
-    await hre.deployments.execute(
-      'PublicResolver',
-      { from: owner },
-      'setAddr(bytes32,address)',
-      utils.namehash(`${name}.${tld}`),
-      owner,
-    )
-    console.log(`Set forward record for ${name}.${tld} to`, owner)
+  console.log('Set subdomain owner for', `${name}.${tld}.${subdomain}`)
 
-    await hre.deployments.execute(
-      'ReverseRegistrar',
-      { from: owner },
-      'setName',
-      `${name}.${tld}`,
-    )
-    console.log(`Set reverse record for ${owner} to`, `${name}.${tld}`)
-  }
+  // Set the resolver for the subdomain - shyam.dtcc.eth to resolver
+  // resolver is the contract address of PublicResolver
+  await hre.deployments.execute(
+    'ENSRegistry',
+    { from: owner },
+    'setResolver',
+    utils.namehash(`${subdomain}.${name}.${tld}`),
+    resolver.address,
+  )
+  console.log(`Set resolver for ${name}.${tld} to`, resolver.address)
 
-  // test output for stored configuration
+  // Set the name shym.dtcc.eth to deployer. Ie, forward name is now mapped to deployer.
+  await hre.deployments.execute(
+    'PublicResolver',
+    { from: owner },
+    'setAddr(bytes32,address)',
+    utils.namehash(`${subdomain}.${name}.${tld}`),
+    deployer,
+  )
+  console.log(`Set forward record for ${name}.${tld} to`, owner)
+
+  // Set the reverse record for deployer to shyam.dtcc.eth
+  await hre.deployments.execute(
+    'ReverseRegistrar',
+    { from: deployer },
+    'setName',
+    `${subdomain}.${name}.${tld}`,
+  )
+  console.log(
+    `Set reverse record for ${owner} to`,
+    `${subdomain}.${name}.${tld}`,
+  )
+
+  // This is the second name registration
+  await hre.deployments.execute(
+    'FIFSRegistrar',
+    { from: deployer },
+    'register',
+    utils.id(name2),
+    owner,
+  )
+  console.log(`Registered ${name2}.${tld} to`, owner)
+
+  await hre.deployments.execute(
+    'ENSRegistry',
+    { from: owner },
+    'setSubnodeOwner',
+    utils.namehash(`${name2}.${tld}`),
+    utils.id(subdomain2),
+    owner,
+  )
+
+  console.log('Set subdomain owner for', `${name2}.${tld}.${subdomain}`)
+
+  await hre.deployments.execute(
+    'ENSRegistry',
+    { from: owner },
+    'setResolver',
+    utils.namehash(`${subdomain2}.${name2}.${tld}`),
+    resolver.address,
+  )
+  console.log(`Set resolver for ${name2}.${tld} to`, resolver.address)
+
+  await hre.deployments.execute(
+    'PublicResolver',
+    { from: owner },
+    'setAddr(bytes32,address)',
+    utils.namehash(`${subdomain2}.${name2}.${tld}`),
+    owner,
+  )
+  console.log(`Set forward record for ${name2}.${tld} to`, owner)
+
+  await hre.deployments.execute(
+    'ReverseRegistrar',
+    { from: owner },
+    'setName',
+    `${subdomain2}.${name2}.${tld}`,
+  )
+  console.log(
+    `Set reverse record for ${owner} to`,
+    `${subdomain2}.${name2}.${tld}`,
+  )
+
   console.log('')
-  const forwardName = `${name}.${tld}`
+  const forwardName = `${subdomain}.${name}.${tld}`
   const forwardResolver = await hre.deployments.read(
     'ENSRegistry',
     'resolver',
@@ -155,10 +233,46 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     'name(bytes32)',
     utils.namehash(reverseName),
   )
+
   console.log('')
   console.log('Reverse Name:', reverseName)
   console.log('Reverse Resolver:', reverseResolver)
   console.log('Reverse Record:', reverseRecord)
+
+  const forwardName2 = `${subdomain2}.${name2}.${tld}`
+  const forwardResolver2 = await hre.deployments.read(
+    'ENSRegistry',
+    'resolver',
+    utils.namehash(forwardName2),
+  )
+  const forwardRecord2 = await hre.deployments.read(
+    'PublicResolver',
+    {},
+    'addr(bytes32)',
+    utils.namehash(forwardName2),
+  )
+
+  console.log('')
+  console.log('Forward Name:', forwardName2)
+  console.log('Forward Resolver:', forwardResolver2)
+  console.log('Forward Record:', forwardRecord2)
+
+  const reverseName2 = `${forwardRecord2.slice(2).toLowerCase()}.addr.reverse`
+  const reverseResolver2 = await hre.deployments.read(
+    'ENSRegistry',
+    'resolver',
+    utils.namehash(reverseName2),
+  )
+  const reverseRecord2 = await hre.deployments.read(
+    'PublicResolver',
+    {},
+    'name(bytes32)',
+    utils.namehash(reverseName2),
+  )
+  console.log('')
+  console.log('Reverse Name:', reverseName2)
+  console.log('Reverse Resolver:', reverseResolver2)
+  console.log('Reverse Record:', reverseRecord2)
 }
 
 func(hre as HardhatRuntimeEnvironment)
