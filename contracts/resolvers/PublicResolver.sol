@@ -73,10 +73,10 @@ contract PublicResolver is
         address _trustedETHController,
         address _trustedReverseRegistrar
     ) ReverseClaimer(_ens, msg.sender) {
-        ens = _ens;
-        nameWrapper = wrapperAddress;
-        trustedETHController = _trustedETHController;
-        trustedReverseRegistrar = _trustedReverseRegistrar;
+        ens = _ens; // ens registry
+        nameWrapper = wrapperAddress; //zero address
+        trustedETHController = _trustedETHController; //registrar
+        trustedReverseRegistrar = _trustedReverseRegistrar; //reverse registrar
     }
 
     /**
