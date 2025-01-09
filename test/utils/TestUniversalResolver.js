@@ -392,7 +392,7 @@ contract('UniversalResolver', function (accounts) {
           'text(bytes32,string)',
           [namehash.hash('test.eth'), 'foo'],
         )
-        const addrData = publicResolver.interface.encodeFunctionData(
+        const addrData = Resolver.interface.encodeFunctionData(
           'addr(bytes32)',
           [namehash.hash('test.eth')],
         )

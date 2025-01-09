@@ -46,8 +46,8 @@ const config: HardhatUserConfig = {
     },
     localhost: {
       url: 'http://127.0.0.1:8545',
-      saveDeployments: true,
-      tags: ['test', 'legacy', 'use_root'],
+      gas: 80000000,
+      gasPrice: 26500000000,
     },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${process.env.INFURA_API_KEY}`,
@@ -78,6 +78,13 @@ const config: HardhatUserConfig = {
       tags: ['legacy', 'use_root'],
       chainId: 1,
       accounts: real_accounts,
+    },
+    besu: {
+      url: process.env.BESU_RPC_URL || '',
+      chainId: 1337,
+      accounts: process.env.BESU_PRIVATE_KEY
+        ? [process.env.BESU_PRIVATE_KEY]
+        : [],
     },
   },
   mocha: {},
@@ -127,6 +134,12 @@ const config: HardhatUserConfig = {
     },
     owner: {
       default: 1,
+    },
+    DTCCWallet: {
+      default: 2,
+    },
+    ZACHWallet: {
+      default: 3,
     },
   },
   external: {

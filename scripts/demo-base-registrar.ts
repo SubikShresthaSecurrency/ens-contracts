@@ -2,7 +2,6 @@ import { DeployFunction } from 'hardhat-deploy/types'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { constants, utils } from 'ethers'
 const { AddressZero, HashZero } = constants
-import { ethers } from 'hardhat'
 
 const tld = 'eth'
 // do a test registration
@@ -23,9 +22,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const ens = await hre.deployments.deploy('ENSRegistry', {
     from: deployer,
     args: [],
-  })
+  }) // deployment sets the owner of ENS Registry to sender
 
-  const duration = 86400 * 365
+  const duration = 86400
 
   console.log('Deployed Registry at', ens.address)
 
@@ -35,7 +34,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // FIRST in FIRST served registrar.
   // Simpler One
   const registrar = await hre.deployments.deploy(
-    'FIFSRegistrarWithExpiration',
+    'BaseRegistrarImplementation',
     {
       from: deployer,
       args: [ens.address, utils.namehash(tld)],
@@ -44,15 +43,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log('Deployed Registrar at', registrar.address)
 
+  await hre.deployments.execute(
+    'BaseRegistrarImplementation',
+    { from: deployer },
+    'addController',
+    deployer,
+  )
+
   // allow the registrar to create names within the tld namespace
   if (registrar.newlyDeployed) {
     await hre.deployments.execute(
       'ENSRegistry',
       { from: deployer }, //owner
       'setSubnodeOwner',
-      HashZero, // Zero Hash makes root owner the registrar
-      utils.id(tld), // tld aka .eth is passed
-      registrar.address, // registrar is now the owner
+      HashZero,
+      utils.id(tld),
+      registrar.address,
     )
   }
 
@@ -115,7 +121,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // There is Base Registrar as well - which is more complicated with a controller and proxy
   // It's deployed in resolve.js file
   await hre.deployments.execute(
-    'FIFSRegistrarWithExpiration', //root node is eth which is set during deployment
+    'BaseRegistrarImplementation', //root node is eth which is set during deployment
     { from: deployer }, // deployer is the current owner of the .eth namespace
     'register',
     utils.id(name),
@@ -154,7 +160,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     { from: owner },
     'setAddr(bytes32,address)',
     utils.namehash(`${subdomain}.${name}.${tld}`),
-    deployer, // this will map the name to the address
+    deployer,
   )
   console.log(`Set reverse record for ${name}.${tld} to`, owner)
 
@@ -162,7 +168,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await hre.deployments.execute(
     'ReverseRegistrar',
     { from: deployer }, //sets the name of reverse record to the caller
-    'setName(string)',
+    'setName',
     `${subdomain}.${name}.${tld}`,
   )
 
@@ -175,7 +181,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // This is the second name registration
   await hre.deployments.execute(
-    'FIFSRegistrarWithExpiration',
+    'BaseRegistrarImplementation',
     { from: deployer },
     'register',
     utils.id(name2),
@@ -213,21 +219,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   )
   console.log(`Set reverse record for ${name2}.${tld} to`, owner)
 
-  // await hre.deployments.execute(
-  //   'ReverseRegistrar',
-  //   { from: owner },
-  //   'setName(string)',
-  //   `${subdomain2}.${name2}.${tld}`,
-  // )
-
   await hre.deployments.execute(
     'ReverseRegistrar',
-    { from: deployer }, //sets the name of reverse record to the caller
-    'setNameForAddr(address,address,address,string)',
-    deployer,
-    deployer,
-    resolver.address,
-    `${subdomain2}.${name}.${tld}`,
+    { from: owner },
+    'setName',
+    `${subdomain2}.${name2}.${tld}`,
   )
   console.log(
     `Set reverse record for ${owner} to`,
@@ -254,13 +250,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log('Forward Record:', forwardRecord)
 
   const reverseName = `${forwardRecord.slice(2).toLowerCase()}.addr.reverse`
-
   const reverseResolver = await hre.deployments.read(
     'ENSRegistry',
     'resolver',
     utils.namehash(reverseName),
   )
-
   const reverseRecord = await hre.deployments.read(
     'PublicResolver',
     {},
@@ -268,16 +262,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     utils.namehash(reverseName),
   )
 
-  const publicReverseResolver = await ethers.getContractAt(
-    'PublicResolver',
-    reverseResolver,
-  )
-  const domainName = await publicReverseResolver.name(
-    utils.namehash(reverseName),
-  )
-
-  console.log(domainName)
-
+  console.log('')
   console.log('Reverse Name:', reverseName)
   console.log('Reverse Resolver:', reverseResolver)
   console.log('Reverse Record:', reverseRecord)
