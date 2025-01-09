@@ -6,11 +6,11 @@ const tld = 'eth'
 const name = 'dtcc'
 const subdomain = 'sss'
 
-const ensRegistryAddress = '0xce75A95160D96F5388437993aB5825F322426E04'
-const registrarAddress = '0x0e52147E1aD0d48F76074214e0782EE4A6Dca120'
+const ensRegistryAddress = '0xce75A95160D96F5388437993aB5825F322426E04' //dummy address - change to real address
+const registrarAddress = '0x0e52147E1aD0d48F76074214e0782EE4A6Dca120' //dummy address - change to real address
 
-const reverseRegistrarAddress = '0x8aEE29EaA4CE75FA53A7F63EEDA722aADaa21DC9'
-const publicResolverAddress = '0xde6Ef25c30e990415a9C0F67f1cCdc2080Ee8045'
+const reverseRegistrarAddress = '0x8aEE29EaA4CE75FA53A7F63EEDA722aADaa21DC9' //dummy address - change to real address
+const publicResolverAddress = '0xde6Ef25c30e990415a9C0F67f1cCdc2080Ee8045' //dummy address - change to real address
 
 async function main() {
   const [deployer] = await ethers.getSigners()
