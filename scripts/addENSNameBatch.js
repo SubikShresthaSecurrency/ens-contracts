@@ -28,10 +28,10 @@ const batchData = [
   {
     name: 'dtcc',
     subdomains: [
-      { name: 'zach2', address: '0x5FbDB2315678afecb367f032d93F642f64180aa3' },
+      { name: 'zach56', address: '0x8aEE29EaA4CE75FA53A7F63EEDA722aADaa21DC9' },
       {
-        name: 'wallet2',
-        address: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+        name: 'wallet56',
+        address: '0xde6Ef25c30e990415a9C0F67f1cCdc2080Ee8045',
       },
     ],
   },
@@ -95,8 +95,13 @@ async function main() {
           `Set forward record for ${subdomain.name}.${entry.name}.${tld} to ${subdomain.address}`,
         )
 
-        // Set reverse record
-        await ReverseRegistrar.setName(`${subdomain.name}.${entry.name}.${tld}`)
+        await ReverseRegistrar.connect(deployer).setNameForAddr(
+          subdomain.address,
+          subdomain.address,
+          publicResolverAddress,
+          `${subdomain.name}.${entry.name}.${tld}`,
+        )
+
         console.log(
           `Set reverse record for ${subdomain.address} to ${subdomain.name}.${entry.name}.${tld}`,
         )
@@ -116,6 +121,7 @@ async function main() {
         const reverseName = `${forwardRecord
           .slice(2)
           .toLowerCase()}.addr.reverse`
+
         const reverseResolver = await ENSRegistry.resolver(
           utils.namehash(reverseName),
         )
