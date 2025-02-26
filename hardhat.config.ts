@@ -44,40 +44,12 @@ const config: HardhatUserConfig = {
       tags: ['test', 'legacy', 'use_root'],
       allowUnlimitedContractSize: false,
     },
-    localhost: {
-      url: 'http://127.0.0.1:8545',
-      saveDeployments: true,
-      tags: ['test', 'legacy', 'use_root'],
-    },
-    rinkeby: {
-      url: `https://rinkeby.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      tags: ['test', 'legacy', 'use_root'],
-      chainId: 4,
-      accounts: real_accounts,
-    },
-    ropsten: {
-      url: `https://ropsten.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      tags: ['test', 'legacy', 'use_root'],
-      chainId: 3,
-      accounts: real_accounts,
-    },
-    goerli: {
-      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      tags: ['test', 'legacy', 'use_root'],
-      chainId: 5,
-      accounts: real_accounts,
-    },
-    sepolia: {
-      url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      tags: ['test', 'legacy', 'use_root'],
-      chainId: 11155111,
-      accounts: real_accounts,
-    },
-    mainnet: {
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      tags: ['legacy', 'use_root'],
-      chainId: 1,
-      accounts: real_accounts,
+    besu: {
+      url: process.env.BESU_RPC_URL || '',
+      chainId: 1337,
+      accounts: process.env.BESU_PRIVATE_KEY
+        ? [process.env.BESU_PRIVATE_KEY]
+        : [],
     },
   },
   mocha: {},
@@ -127,6 +99,12 @@ const config: HardhatUserConfig = {
     },
     owner: {
       default: 1,
+    },
+    DTCCWallet: {
+      default: 2,
+    },
+    ZACHWallet: {
+      default: 3,
     },
   },
   external: {
