@@ -65,6 +65,8 @@ module.exports = async function main() {
   })
 
   // allow the reverse registrar to create names within the reverse.addr namespace
+  // we set deployer address as the owner -
+  // because we still need to do further configuration for reverse address
   if (reverseRegistrar.newlyDeployed) {
     await hre.deployments.execute(
       'ENSRegistry',
@@ -72,9 +74,10 @@ module.exports = async function main() {
       'setSubnodeOwner',
       HashZero,
       utils.id('reverse'),
-      deployer.address,
-    ) //HashZero is the root node and is authorised to be used by deployer
+      deployer.address, //HashZero is the root node and is authorised to be used by deployer
+    )
 
+    // we do the configuration and set the reverse registrar as the owner
     await hre.deployments.execute(
       'ENSRegistry',
       { from: deployer.address },
@@ -133,7 +136,7 @@ module.exports = async function main() {
 
   // Register a name to FIFS Registrar - Which makes "deployer", the owner of the name - dtcc.eth.
   // FIFS is a simple registrar that allows a name to be registered in first in first served basis.
-  // There is Base Registrar as well - which is more complicated with a controller and proxy
+  // Why does register work even though deployer.address is not the owner? Because - it is brand new domain name
   await hre.deployments.execute(
     'FIFSRegistrarWithExpiration', //root node is eth which is set during deployment
     { from: deployer.address }, // deployer is the current owner of the .eth namespace
