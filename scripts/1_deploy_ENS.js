@@ -12,7 +12,7 @@ const DTCCWalletAddress = '0x720888D077b1561E3185D48A7539AEA745F33A38'
 const ZACHWalletAddress = '0x41D42c2DE07000f286CbFa1c17b2A5FA5f105656'
 
 module.exports = async function main() {
-  const [deployer, DTCCWallet] = await ethers.getSigners()
+  const [deployer] = await ethers.getSigners()
 
   // Registry is the main contract that stores all the information about the domain
   // Like subdomainOwner, owner, resolver etc
@@ -367,37 +367,4 @@ module.exports = async function main() {
   console.log('')
   console.log('First Domain Name Registered Is: ', domainName1)
   console.log('Second Domain Name Registered Is: ', domainName2)
-
-  const nameSss = 'ssss'
-  // Register a name to FIFS Registrar - Which makes "deployer", the owner of the name - dtcc.eth.
-  // FIFS is a simple registrar that allows a name to be registered in first in first served basis.
-  // Why does register work even though deployer.address is not the owner? Because - it is brand new domain name
-  await hre.deployments.execute(
-    'FIFSRegistrarWithExpiration', //root node is eth which is set during deployment
-    { from: DTCCWallet.address }, // deployer is the current owner of the .eth namespace
-    'doRegistration',
-    utils.namehash(tld),
-    utils.id('ssss'),
-    deployer.address, // now owner is the one who owns the name dtcc.eth
-    resolver.address,
-    duration,
-  )
-
-  const forwardNameSs = `${nameSss}.${tld}`
-  const forwardResolverSs = await hre.deployments.read(
-    'ENSRegistry',
-    'resolver',
-    utils.namehash(forwardNameSs),
-  )
-  const forwardRecordSs = await hre.deployments.read(
-    'PublicResolver',
-    {},
-    'addr(bytes32)',
-    utils.namehash(forwardNameSs),
-  )
-
-  console.log('')
-  console.log('Forward Name:', forwardNameSs)
-  console.log('Forward Resolver:', forwardResolverSs)
-  console.log('Forward Record:', forwardRecordSs)
 }

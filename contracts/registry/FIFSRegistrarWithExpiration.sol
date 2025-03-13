@@ -2,6 +2,7 @@ pragma solidity >=0.8.4;
 
 import "./ENS.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../resolvers/Resolver.sol";
 
 /**
  * A registrar that allocates subdomains to the first person to claim them,
@@ -67,6 +68,34 @@ contract FIFSRegistrarWithExpiration is Ownable {
         ens.setSubnodeOwner(rootNode, label, owner);
 
         emit NameRegistered(label, owner, expires);
+    }
+
+    function doRegistration(
+        bytes32 node,
+        bytes32 label,
+        address subdomainOwner,
+        Resolver resolver,
+        uint256 duration
+    ) external {
+        require(duration > 0, "Duration must be greater than zero");
+        require(available(label), "Name not available");
+
+        uint256 expires = block.timestamp + duration;
+        expiries[label] = expires;
+
+        // Get the subdomain so we can configure it
+        ens.setSubnodeOwner(node, label, address(this));
+
+        bytes32 subnode = keccak256(abi.encodePacked(node, label));
+
+        // Set the subdomain's resolver
+        ens.setResolver(subnode, address(resolver));
+
+        // Set the address record on the resolver
+        resolver.setAddr(subnode, subdomainOwner);
+
+        // Pass ownership of the new subdomain to the registrant
+        ens.setOwner(subnode, subdomainOwner);
     }
 
     /**
