@@ -76,7 +76,7 @@ contract FIFSRegistrarWithExpiration is Ownable {
         address subdomainOwner,
         Resolver resolver,
         uint256 duration
-    ) external {
+    ) external only_owner(label) {
         require(duration > 0, "Duration must be greater than zero");
         require(available(label), "Name not available");
 

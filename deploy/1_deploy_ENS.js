@@ -3,8 +3,8 @@ const { AddressZero, HashZero } = constants
 const { ethers } = require('hardhat')
 
 // zach.dtcc.eth
-const tld = 'eth'
-const name = 'dtcc'
+const tld = 'dda' //dda
+const name = 'dtcc' // dtcc
 const subdomainZach = 'zach'
 const dtccWalletSubdomain = 'wallet'
 

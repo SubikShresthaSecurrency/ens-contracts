@@ -55,8 +55,8 @@ contract ENSRegistry is ENS {
      * @param ttl The TTL in seconds.
      */
     function setSubnodeRecord(
-        bytes32 node,
-        bytes32 label,
+        bytes32 node, //.eth
+        bytes32 label, // vinay
         address owner,
         address resolver,
         uint64 ttl
