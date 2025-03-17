@@ -93,6 +93,7 @@ contract FIFSRegistrarWithExpiration is Ownable {
     ) external only_owner(keccak256(abi.encodePacked(name))) {
         require(duration > 0, "Duration must be greater than zero");
         bytes32 label = keccak256(abi.encodePacked(name));
+
         require(available(label), "Name not available");
 
         uint256 expires = block.timestamp + duration;
@@ -217,7 +218,7 @@ contract FIFSRegistrarWithExpiration is Ownable {
             owner,
             owner,
             resolver,
-            string.concat(name, ".dtcc.dda")
+            string.concat(name, ".dtcc.ssa")
         );
     }
 }

@@ -5,7 +5,7 @@ const { ethers } = require('hardhat')
 // eth
 // dda
 // zach.dtcc.eth
-const tld = 'dda' //dda
+const tld = 'ssa' //dda
 const name = 'dtcc' // dtcc
 const subdomainZach = 'zach'
 const subdomainWallet = 'wallet'
@@ -19,10 +19,15 @@ module.exports = async function main() {
 
   let tx
 
-  const ens = await hre.deployments.deploy('ENSRegistry', {
-    from: deployer.address,
-    args: [],
-  })
+  const ens = await hre.ethers.getContractAt(
+    'ENSRegistry',
+    '0x6A1E3042922E0252befBD385Ee35ce48A9806904',
+  )
+  const ENSRegistry = await ethers.getContractAt('ENSRegistry', ens.address)
+  // const ens = await hre.deployments.deploy('ENSRegistry', {
+  //   from: deployer.address,
+  //   args: [],
+  // })
 
   const duration = 86400 * 365
 
@@ -45,24 +50,24 @@ module.exports = async function main() {
 
   // allow the registrar to create names within the tld namespace
   if (registrar.newlyDeployed) {
-    await hre.deployments.execute(
-      'ENSRegistry',
-      { from: deployer.address }, //owner
-      'setSubnodeOwner',
-      HashZero, // Zero Hash makes root owner the registrar
-      utils.id(tld), // tld aka .eth is passed
-      deployer.address, // registrar is now the owner
+    tx = await ENSRegistry.setSubnodeOwner(
+      HashZero,
+      utils.id(tld),
+      deployer.address, // deployer is now the owner
     )
+    console.log(1)
+
+    await tx.wait()
   }
 
-  await hre.deployments.execute(
-    'ENSRegistry',
-    { from: deployer.address }, //owner
-    'setSubnodeOwner',
+  tx = await ENSRegistry.setSubnodeOwner(
     utils.namehash(tld),
     utils.id(name),
-    registrar.address, // set the owner of the subdomain to deployer
+    registrar.address, // set the owner of the subdomain to registrar
   )
+  await tx.wait()
+
+  console.log(2)
 
   // Reverse Registrar is a contract that manages the reverse records for the domain like mapping an address to a name
   console.log('Deploying Reverse Registrar')
@@ -76,24 +81,21 @@ module.exports = async function main() {
   // we set deployer address as the owner -
   // because we still need to do further configuration for reverse address
   if (reverseRegistrar.newlyDeployed) {
-    await hre.deployments.execute(
-      'ENSRegistry',
-      { from: deployer.address },
-      'setSubnodeOwner',
+    tx = await ENSRegistry.setSubnodeOwner(
       HashZero,
       utils.id('reverse'),
-      deployer.address, //HashZero is the root node and is authorised to be used by deployer
+      deployer.address,
     )
 
-    // we do the configuration and set the reverse registrar as the owner
-    await hre.deployments.execute(
-      'ENSRegistry',
-      { from: deployer.address },
-      'setSubnodeOwner',
+    await tx.wait()
+
+    tx = await ENSRegistry.setSubnodeOwner(
       utils.namehash('reverse'),
       utils.id('addr'),
       reverseRegistrar.address,
     )
+
+    await tx.wait()
   }
 
   // set deployer as controller of the reverse registrar
@@ -170,17 +172,17 @@ module.exports = async function main() {
     { from: deployer.address }, // deployer is the current owner of the .eth namespace
     'doRegistration',
     subdomainWallet,
-    DTCCWallet.address, // now owner is the one who owns the name dtcc.eth
+    '0xc110B453fd254ec8E37BD79ae62026BC059c7FB2', // now owner is the one who owns the name dtcc.eth
     resolver.address,
     duration,
   )
 
   const forwardNameDTCC = `${subdomainWallet}.${name}.${tld}`
-  const forwardResolverDTCC = await hre.deployments.read(
-    'ENSRegistry',
-    'resolver',
+
+  const forwardResolverDTCC = await ENSRegistry.resolver(
     utils.namehash(forwardNameDTCC),
   )
+
   const forwardRecordDTCC = await hre.deployments.read(
     'PublicResolver',
     {},
@@ -195,11 +197,7 @@ module.exports = async function main() {
 
   let reverseName = `${forwardRecordDTCC.slice(2).toLowerCase()}.addr.reverse`
 
-  let reverseResolver = await hre.deployments.read(
-    'ENSRegistry',
-    'resolver',
-    utils.namehash(reverseName),
-  )
+  let reverseResolver = await ENSRegistry.resolver(utils.namehash(reverseName))
 
   let reverseRecord = await hre.deployments.read(
     'PublicResolver',
@@ -221,17 +219,19 @@ module.exports = async function main() {
     { from: deployer.address }, // deployer is the current owner of the .eth namespace
     'doRegistration',
     subdomainZach,
-    ZACHWallet.address, // now owner is the one who owns the name dtcc.eth
+    '0x6A1E3042922E0252befBD385Ee35ce48A9806904', // now owner is the one who owns the name dtcc.eth
     resolver.address,
     duration,
   )
 
+  console.log('here?')
+
   const forwardNameZach = `${subdomainZach}.${name}.${tld}`
-  const forwardResolverZach = await hre.deployments.read(
-    'ENSRegistry',
-    'resolver',
+
+  const forwardResolverZach = ENSRegistry.resolver(
     utils.namehash(forwardNameZach),
   )
+
   const forwardRecordZach = await hre.deployments.read(
     'PublicResolver',
     {},
@@ -246,11 +246,7 @@ module.exports = async function main() {
 
   reverseName = `${forwardRecordZach.slice(2).toLowerCase()}.addr.reverse`
 
-  reverseResolver = await hre.deployments.read(
-    'ENSRegistry',
-    'resolver',
-    utils.namehash(reverseName),
-  )
+  reverseResolver = await ENSRegistry.resolver(utils.namehash(reverseName))
 
   reverseRecord = await hre.deployments.read(
     'PublicResolver',
