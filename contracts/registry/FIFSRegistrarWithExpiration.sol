@@ -3,6 +3,8 @@ pragma solidity >=0.8.4;
 import "./ENS.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../resolvers/Resolver.sol";
+import "../reverseRegistrar/ReverseRegistrar.sol";
+import "hardhat/console.sol";
 
 /**
  * A registrar that allocates subdomains to the first person to claim them,
@@ -11,12 +13,17 @@ import "../resolvers/Resolver.sol";
 contract FIFSRegistrarWithExpiration is Ownable {
     ENS public ens;
     bytes32 public rootNode;
+    address public reverseRegistrar;
+    bytes32 public rootNameNode;
 
     // A map of expiration times for each subdomain (label hash)
     mapping(bytes32 => uint256) public expiries;
 
     // A grace period after expiration during which the domain can still be renewed
     uint256 public constant GRACE_PERIOD = 90 days;
+
+    bytes32 public constant TLD = keccak256(abi.encodePacked("dda"));
+    bytes32 public constant SUBDOMAIN = keccak256(abi.encodePacked("dtcc"));
 
     // Events
     event NameRegistered(
@@ -33,9 +40,11 @@ contract FIFSRegistrarWithExpiration is Ownable {
      * @param ensAddr The address of the ENS registry.
      * @param node The node (namehash) that this registrar administers.
      */
-    constructor(ENS ensAddr, bytes32 node) {
+    constructor(ENS ensAddr, bytes32 node, bytes32 rootName) {
         ens = ensAddr;
         rootNode = node;
+
+        rootNameNode = keccak256(abi.encodePacked(node, rootName));
     }
 
     modifier only_owner(bytes32 label) {
@@ -65,28 +74,37 @@ contract FIFSRegistrarWithExpiration is Ownable {
         expiries[label] = expires;
 
         // Set ownership in the ENS registry
-        ens.setSubnodeOwner(rootNode, label, owner);
+        ens.setSubnodeOwner(rootNameNode, label, owner);
 
         emit NameRegistered(label, owner, expires);
     }
 
+    function setReverseRegistrar(address _reverseRegistrar) external onlyOwner {
+        require(
+            _reverseRegistrar != address(0),
+            "Invalid reverse registrar address"
+        );
+        reverseRegistrar = _reverseRegistrar;
+    }
+
     function doRegistration(
-        bytes32 node,
-        bytes32 label,
+        string memory name,
         address subdomainOwner,
         Resolver resolver,
         uint256 duration
-    ) external only_owner(label) {
+    ) external only_owner(keccak256(abi.encodePacked(name))) {
         require(duration > 0, "Duration must be greater than zero");
+        bytes32 label = keccak256(abi.encodePacked(name));
         require(available(label), "Name not available");
 
         uint256 expires = block.timestamp + duration;
         expiries[label] = expires;
+        bytes32 subnode = keccak256(abi.encodePacked(rootNameNode, label));
 
         // Get the subdomain so we can configure it
-        ens.setSubnodeOwner(node, label, address(this));
+        ens.setSubnodeOwner(rootNameNode, label, address(this));
 
-        bytes32 subnode = keccak256(abi.encodePacked(node, label));
+        // Calculate the subnode hash using the TLD and SUBDOMAIN constants
 
         // Set the subdomain's resolver
         ens.setResolver(subnode, address(resolver));
@@ -96,6 +114,10 @@ contract FIFSRegistrarWithExpiration is Ownable {
 
         // Pass ownership of the new subdomain to the registrant
         ens.setOwner(subnode, subdomainOwner);
+
+        if (reverseRegistrar != address(0)) {
+            _setReverseRecord(name, address(resolver), subdomainOwner);
+        }
     }
 
     /**
@@ -188,5 +210,18 @@ contract FIFSRegistrarWithExpiration is Ownable {
      */
     function reclaimRootNode() external onlyOwner {
         ens.setOwner(rootNode, owner());
+    }
+
+    function _setReverseRecord(
+        string memory name,
+        address resolver,
+        address owner
+    ) internal {
+        ReverseRegistrar(reverseRegistrar).setNameForAddr(
+            msg.sender,
+            owner,
+            resolver,
+            string.concat(name, ".dtcc.dda")
+        );
     }
 }

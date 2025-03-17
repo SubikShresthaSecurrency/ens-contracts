@@ -12,7 +12,11 @@ const DTCCWalletAddress = '0x720888D077b1561E3185D48A7539AEA745F33A38'
 const ZACHWalletAddress = '0x41D42c2DE07000f286CbFa1c17b2A5FA5f105656'
 
 module.exports = async function main() {
-  const [deployer, DTCCWallet] = await ethers.getSigners()
+  const [deployer, owner, DTCCWallet, ZACHWallet] = await ethers.getSigners()
+
+  console.log(DTCCWallet.address)
+
+  console.log(ZACHWallet.address)
 
   // Registry is the main contract that stores all the information about the domain
   // Like subdomainOwner, owner, resolver etc
@@ -38,7 +42,7 @@ module.exports = async function main() {
     'FIFSRegistrarWithExpiration',
     {
       from: deployer.address,
-      args: [ens.address, utils.namehash(tld)],
+      args: [ens.address, utils.namehash(tld), utils.id(name)],
     },
   )
 
@@ -52,9 +56,18 @@ module.exports = async function main() {
       'setSubnodeOwner',
       HashZero, // Zero Hash makes root owner the registrar
       utils.id(tld), // tld aka .eth is passed
-      registrar.address, // registrar is now the owner
+      deployer.address, // registrar is now the owner
     )
   }
+
+  await hre.deployments.execute(
+    'ENSRegistry',
+    { from: deployer.address }, //owner
+    'setSubnodeOwner',
+    utils.namehash(tld),
+    utils.id(name),
+    registrar.address, // set the owner of the subdomain to deployer
+  )
 
   // Reverse Registrar is a contract that manages the reverse records for the domain like mapping an address to a name
   console.log('Deploying Reverse Registrar')
@@ -97,7 +110,27 @@ module.exports = async function main() {
     true,
   )
 
+  // set deployer as controller of the reverse registrar
+  await hre.deployments.execute(
+    'ReverseRegistrar',
+    { from: deployer.address },
+    'setController',
+    registrar.address,
+    true,
+  )
+
   console.log('Deployed Reverse Registrar at', reverseRegistrar.address)
+
+  console.log('Setting Reverse Registrar in FIFS')
+
+  await hre.deployments.execute(
+    'FIFSRegistrarWithExpiration',
+    { from: deployer.address },
+    'setReverseRegistrar',
+    reverseRegistrar.address,
+  )
+
+  console.log('Set Reverse Registrar in FIFS')
 
   // Public Resolver is a contract that stores the records for the domain
   const resolver = await hre.deployments.deploy('PublicResolver', {
@@ -134,175 +167,61 @@ module.exports = async function main() {
   //###################################################################################
   //###################################################################################
 
+  // // Register a name to FIFS Registrar - Which makes "deployer", the owner of the name - dtcc.eth.
+  // // FIFS is a simple registrar that allows a name to be registered in first in first served basis.
+  // // Why does register work even though deployer.address is not the owner? Because - it is brand new domain name
+  // await hre.deployments.execute(
+  //   'FIFSRegistrarWithExpiration', //root node is eth which is set during deployment
+  //   { from: deployer.address }, // deployer is the current owner of the .eth namespace
+  //   'register',
+  //   utils.id(name),
+  //   deployer.address, // now owner is the one who owns the name dtcc.eth
+  //   duration,
+  // )
+
+  console.log(`Registered ${name}.${tld} to`, deployer.address)
+
+  const nameRam = 'ram'
   // Register a name to FIFS Registrar - Which makes "deployer", the owner of the name - dtcc.eth.
   // FIFS is a simple registrar that allows a name to be registered in first in first served basis.
   // Why does register work even though deployer.address is not the owner? Because - it is brand new domain name
   await hre.deployments.execute(
     'FIFSRegistrarWithExpiration', //root node is eth which is set during deployment
-    { from: deployer.address }, // deployer is the current owner of the .eth namespace
-    'register',
-    utils.id(name),
-    deployer.address, // now owner is the one who owns the name dtcc.eth
+    { from: DTCCWallet.address }, // deployer is the current owner of the .eth namespace
+    'doRegistration',
+    nameRam,
+    DTCCWallet.address, // now owner is the one who owns the name dtcc.eth
+    resolver.address,
     duration,
   )
 
-  console.log(`Registered ${name}.${tld} to`, deployer.address)
-
-  // Set the owner of the subdomain - zach.dtcc.eth to owner. dtcc.eth is concatenated with zach as keccak
-  await hre.deployments.execute(
-    'ENSRegistry',
-    { from: deployer.address },
-    'setSubnodeOwner',
-    utils.namehash(`${name}.${tld}`),
-    utils.id(subdomainZach),
-    deployer.address, // ZACHWallet is the owner. Now the wallet can setApprovalForAll for the domain. If it wants to transfer ownership it needs to call setSubnodeOwner again
-  )
-
-  console.log('Set subdomainZach owner for', `${subdomainZach}.${name}.${tld}`)
-
-  // Set the resolver for the subdomainZach - zach.dtcc.eth to resolver
-  // resolver is the contract address of PublicResolver
-  await hre.deployments.execute(
-    'ENSRegistry',
-    { from: deployer.address },
-    'setResolver',
-    utils.namehash(`${subdomainZach}.${name}.${tld}`),
-    resolver.address,
-  )
-
-  console.log(
-    `Set resolver for ${subdomainZach}.${name}.${tld} to`,
-    resolver.address,
-  )
-
-  // Set the name shym.dtcc.eth to deployer. Ie, forward name is now mapped to deployer.
-  await hre.deployments.execute(
-    'PublicResolver',
-    { from: deployer.address },
-    'setAddr(bytes32,address)',
-    utils.namehash(`${subdomainZach}.${name}.${tld}`),
-    ZACHWalletAddress, // this will map the name to the address
-  )
-
-  console.log(
-    `Set forward record for ${subdomainZach}.${name}.${tld} to`,
-    ZACHWalletAddress,
-  )
-
-  // Set the reverse record for deployer to zach.dtcc.eth
-  await hre.deployments.execute(
-    'ReverseRegistrar',
-    { from: deployer.address, gasLimit: 5000000 }, // sets the name of reverse record to the caller with manual gas limit
-    'setNameForAddr(address,address,address,string)',
-    ZACHWalletAddress,
-    ZACHWalletAddress,
-    resolver.address,
-    `${subdomainZach}.${name}.${tld}`,
-  )
-
-  console.log(
-    `Set reverse record for ${ZACHWalletAddress} to ${subdomainZach}.${name}.${tld}`,
-  )
-
-  //###################################################################################
-  //###################################################################################
-  //###############   SECOND DOMAIN REGISTRATION START    #############################
-  //###################################################################################
-  //###################################################################################
-
-  await hre.deployments.execute(
-    'ENSRegistry',
-    { from: deployer.address },
-    'setSubnodeOwner',
-    utils.namehash(`${name}.${tld}`),
-    utils.id(dtccWalletSubdomain),
-    deployer.address,
-  )
-
-  console.log(
-    'Set subdomain owner for',
-    `${dtccWalletSubdomain}.${name}.${tld}`,
-  )
-
-  await hre.deployments.execute(
-    'ENSRegistry',
-    { from: deployer.address },
-    'setResolver',
-    utils.namehash(`${dtccWalletSubdomain}.${name}.${tld}`),
-    resolver.address,
-  )
-
-  console.log(
-    `Set resolver for ${dtccWalletSubdomain}.${name}.${tld} to`,
-    resolver.address,
-  )
-
-  await hre.deployments.execute(
-    'PublicResolver',
-    { from: deployer.address },
-    'setAddr(bytes32,address)',
-    utils.namehash(`${dtccWalletSubdomain}.${name}.${tld}`),
-    DTCCWalletAddress, // this will map the name to the address
-  )
-
-  console.log(
-    `Set forward record for ${dtccWalletSubdomain}.${name}.${tld} to`,
-    DTCCWalletAddress,
-  )
-
-  await hre.deployments.execute(
-    'ReverseRegistrar',
-    { from: deployer.address },
-    'setName(string)',
-    `${dtccWalletSubdomain}.${name}.${tld}`,
-  )
-
-  await hre.deployments.execute(
-    'ReverseRegistrar',
-    { from: deployer.address, gasLimit: 5000000 }, // sets the name of reverse record to the caller with manual gas limit
-    'setNameForAddr(address,address,address,string)',
-    DTCCWalletAddress,
-    DTCCWalletAddress,
-    resolver.address,
-    `${dtccWalletSubdomain}.${name}.${tld}`,
-  )
-
-  console.log(
-    `Set reverse record for ${DTCCWalletAddress} to ${dtccWalletSubdomain}.${name}.${tld}`,
-  )
-
-  //###################################################################################
-  //###################################################################################
-  //###############        CONSOLE LOGS DETAILS            ############################
-  //###################################################################################
-  //###################################################################################
-
-  console.log('')
-  const forwardName = `${subdomainZach}.${name}.${tld}`
-  const forwardResolver = await hre.deployments.read(
+  const forwardNameRam = `${nameRam}.${name}.${tld}`
+  const forwardResolverRam = await hre.deployments.read(
     'ENSRegistry',
     'resolver',
-    utils.namehash(forwardName),
+    utils.namehash(forwardNameRam),
   )
-  const forwardRecord = await hre.deployments.read(
+  const forwardRecordRam = await hre.deployments.read(
     'PublicResolver',
     {},
     'addr(bytes32)',
-    utils.namehash(forwardName),
+    utils.namehash(forwardNameRam),
   )
-  console.log('Forward Name:', forwardName)
-  console.log('Forward Resolver:', forwardResolver)
-  console.log('Forward Record:', forwardRecord)
 
-  const reverseName = `${forwardRecord.slice(2).toLowerCase()}.addr.reverse`
+  console.log('')
+  console.log('Forward Name:', forwardNameRam)
+  console.log('Forward Resolver:', forwardResolverRam)
+  console.log('Forward Record:', forwardRecordRam)
 
-  const reverseResolver = await hre.deployments.read(
+  let reverseName = `${forwardRecordRam.slice(2).toLowerCase()}.addr.reverse`
+
+  let reverseResolver = await hre.deployments.read(
     'ENSRegistry',
     'resolver',
     utils.namehash(reverseName),
   )
 
-  const reverseRecord = await hre.deployments.read(
+  let reverseRecord = await hre.deployments.read(
     'PublicResolver',
     {},
     'name(bytes32)',
@@ -314,90 +233,311 @@ module.exports = async function main() {
   console.log('Reverse Resolver:', reverseResolver)
   console.log('Reverse Record:', reverseRecord)
 
-  //################################
-  //## SECOND DOMAIN CONSOLE LOGS ##
-  //################################
-
-  const forwardName2 = `${dtccWalletSubdomain}.${name}.${tld}`
-  const forwardResolver2 = await hre.deployments.read(
-    'ENSRegistry',
-    'resolver',
-    utils.namehash(forwardName2),
-  )
-  const forwardRecord2 = await hre.deployments.read(
-    'PublicResolver',
-    {},
-    'addr(bytes32)',
-    utils.namehash(forwardName2),
-  )
-
-  console.log('')
-  console.log('Forward Name:', forwardName2)
-  console.log('Forward Resolver:', forwardResolver2)
-  console.log('Forward Record:', forwardRecord2)
-
-  const reverseName2 = `${forwardRecord2.slice(2).toLowerCase()}.addr.reverse`
-  const reverseResolver2 = await hre.deployments.read(
-    'ENSRegistry',
-    'resolver',
-    utils.namehash(reverseName2),
-  )
-  const reverseRecord2 = await hre.deployments.read(
-    'PublicResolver',
-    {},
-    'name(bytes32)',
-    utils.namehash(reverseName2),
-  )
-  console.log('')
-  console.log('Reverse Name:', reverseName2)
-  console.log('Reverse Resolver:', reverseResolver2)
-  console.log('Reverse Record:', reverseRecord2)
-
-  const publicReverseResolver = await ethers.getContractAt(
-    'PublicResolver',
-    reverseResolver,
-  )
-  const domainName1 = await publicReverseResolver.name(
-    utils.namehash(reverseName),
-  )
-  const domainName2 = await publicReverseResolver.name(
-    utils.namehash(reverseName2),
-  )
-
-  console.log('')
-  console.log('First Domain Name Registered Is: ', domainName1)
-  console.log('Second Domain Name Registered Is: ', domainName2)
-
-  const nameSss = 'ssss'
+  const nameShyam = 'shyam'
   // Register a name to FIFS Registrar - Which makes "deployer", the owner of the name - dtcc.eth.
   // FIFS is a simple registrar that allows a name to be registered in first in first served basis.
   // Why does register work even though deployer.address is not the owner? Because - it is brand new domain name
   await hre.deployments.execute(
     'FIFSRegistrarWithExpiration', //root node is eth which is set during deployment
-    { from: DTCCWallet.address }, // deployer is the current owner of the .eth namespace
+    { from: ZACHWallet.address }, // deployer is the current owner of the .eth namespace
     'doRegistration',
-    utils.namehash(tld),
-    utils.id('ssss'),
-    deployer.address, // now owner is the one who owns the name dtcc.eth
+    nameShyam,
+    ZACHWallet.address, // now owner is the one who owns the name dtcc.eth
     resolver.address,
     duration,
   )
 
-  const forwardNameSs = `${nameSss}.${tld}`
-  const forwardResolverSs = await hre.deployments.read(
+  const forwardNameShyam = `${nameShyam}.${name}.${tld}`
+  const forwardResolverShyam = await hre.deployments.read(
     'ENSRegistry',
     'resolver',
-    utils.namehash(forwardNameSs),
+    utils.namehash(forwardNameShyam),
   )
-  const forwardRecordSs = await hre.deployments.read(
+  const forwardRecordShyam = await hre.deployments.read(
     'PublicResolver',
     {},
     'addr(bytes32)',
-    utils.namehash(forwardNameSs),
+    utils.namehash(forwardNameShyam),
   )
 
   console.log('')
-  console.log('Forward Name:', forwardNameSs)
-  console.log('Forward Resolver:', forwardResolverSs)
-  console.log('Forward Record:', forwardRecordSs)
+  console.log('Forward Name:', forwardNameShyam)
+  console.log('Forward Resolver:', forwardResolverShyam)
+  console.log('Forward Record:', forwardRecordShyam)
+
+  reverseName = `${forwardRecordShyam.slice(2).toLowerCase()}.addr.reverse`
+
+  reverseResolver = await hre.deployments.read(
+    'ENSRegistry',
+    'resolver',
+    utils.namehash(reverseName),
+  )
+
+  reverseRecord = await hre.deployments.read(
+    'PublicResolver',
+    {},
+    'name(bytes32)',
+    utils.namehash(reverseName),
+  )
+
+  console.log('')
+  console.log('Reverse Name:', reverseName)
+  console.log('Reverse Resolver:', reverseResolver)
+  console.log('Reverse Record:', reverseRecord)
+
+  // const forwardName = `${subdomainZach}.${name}.${tld}`
+  // const forwardResolver = await hre.deployments.read(
+  //   'ENSRegistry',
+  //   'resolver',
+  //   utils.namehash(forwardName),
+  // )
+  // const forwardRecord = await hre.deployments.read(
+  //   'PublicResolver',
+  //   {},
+  //   'addr(bytes32)',
+  //   utils.namehash(forwardName),
+  // )
+  // console.log('Forward Name:', forwardName)
+  // console.log('Forward Resolver:', forwardResolver)
+  // console.log('Forward Record:', forwardRecord)
+
+  // const reverseName = `${forwardRecord.slice(2).toLowerCase()}.addr.reverse`
+
+  // const reverseResolver = await hre.deployments.read(
+  //   'ENSRegistry',
+  //   'resolver',
+  //   utils.namehash(reverseName),
+  // )
+
+  // const reverseRecord = await hre.deployments.read(
+  //   'PublicResolver',
+  //   {},
+  //   'name(bytes32)',
+  //   utils.namehash(reverseName),
+  // )
+
+  // console.log('')
+  // console.log('Reverse Name:', reverseName)
+  // console.log('Reverse Resolver:', reverseResolver)
+  // console.log('Reverse Record:', reverseRecord)
+
+  // // Set the owner of the subdomain - zach.dtcc.eth to owner. dtcc.eth is concatenated with zach as keccak
+  // await hre.deployments.execute(
+  //   'ENSRegistry',
+  //   { from: deployer.address },
+  //   'setSubnodeOwner',
+  //   utils.namehash(`${name}.${tld}`),
+  //   utils.id(subdomainZach),
+  //   deployer.address, // ZACHWallet is the owner. Now the wallet can setApprovalForAll for the domain. If it wants to transfer ownership it needs to call setSubnodeOwner again
+  // )
+
+  // console.log('Set subdomainZach owner for', `${subdomainZach}.${name}.${tld}`)
+
+  // // Set the resolver for the subdomainZach - zach.dtcc.eth to resolver
+  // // resolver is the contract address of PublicResolver
+  // await hre.deployments.execute(
+  //   'ENSRegistry',
+  //   { from: deployer.address },
+  //   'setResolver',
+  //   utils.namehash(`${subdomainZach}.${name}.${tld}`),
+  //   resolver.address,
+  // )
+
+  // console.log(
+  //   `Set resolver for ${subdomainZach}.${name}.${tld} to`,
+  //   resolver.address,
+  // )
+
+  // // Set the name shym.dtcc.eth to deployer. Ie, forward name is now mapped to deployer.
+  // await hre.deployments.execute(
+  //   'PublicResolver',
+  //   { from: deployer.address },
+  //   'setAddr(bytes32,address)',
+  //   utils.namehash(`${subdomainZach}.${name}.${tld}`),
+  //   ZACHWalletAddress, // this will map the name to the address
+  // )
+
+  // console.log(
+  //   `Set forward record for ${subdomainZach}.${name}.${tld} to`,
+  //   ZACHWalletAddress,
+  // )
+
+  // // Set the reverse record for deployer to zach.dtcc.eth
+  // await hre.deployments.execute(
+  //   'ReverseRegistrar',
+  //   { from: deployer.address, gasLimit: 5000000 }, // sets the name of reverse record to the caller with manual gas limit
+  //   'setNameForAddr(address,address,address,string)',
+  //   ZACHWalletAddress,
+  //   ZACHWalletAddress,
+  //   resolver.address,
+  //   `${subdomainZach}.${name}.${tld}`,
+  // )
+
+  // console.log(
+  //   `Set reverse record for ${ZACHWalletAddress} to ${subdomainZach}.${name}.${tld}`,
+  // )
+
+  // //###################################################################################
+  // //###################################################################################
+  // //###############   SECOND DOMAIN REGISTRATION START    #############################
+  // //###################################################################################
+  // //###################################################################################
+
+  // await hre.deployments.execute(
+  //   'ENSRegistry',
+  //   { from: deployer.address },
+  //   'setSubnodeOwner',
+  //   utils.namehash(`${name}.${tld}`),
+  //   utils.id(dtccWalletSubdomain),
+  //   deployer.address,
+  // )
+
+  // console.log(
+  //   'Set subdomain owner for',
+  //   `${dtccWalletSubdomain}.${name}.${tld}`,
+  // )
+
+  // await hre.deployments.execute(
+  //   'ENSRegistry',
+  //   { from: deployer.address },
+  //   'setResolver',
+  //   utils.namehash(`${dtccWalletSubdomain}.${name}.${tld}`),
+  //   resolver.address,
+  // )
+
+  // console.log(
+  //   `Set resolver for ${dtccWalletSubdomain}.${name}.${tld} to`,
+  //   resolver.address,
+  // )
+
+  // await hre.deployments.execute(
+  //   'PublicResolver',
+  //   { from: deployer.address },
+  //   'setAddr(bytes32,address)',
+  //   utils.namehash(`${dtccWalletSubdomain}.${name}.${tld}`),
+  //   DTCCWalletAddress, // this will map the name to the address
+  // )
+
+  // console.log(
+  //   `Set forward record for ${dtccWalletSubdomain}.${name}.${tld} to`,
+  //   DTCCWalletAddress,
+  // )
+
+  // await hre.deployments.execute(
+  //   'ReverseRegistrar',
+  //   { from: deployer.address },
+  //   'setName(string)',
+  //   `${dtccWalletSubdomain}.${name}.${tld}`,
+  // )
+
+  // await hre.deployments.execute(
+  //   'ReverseRegistrar',
+  //   { from: deployer.address, gasLimit: 5000000 }, // sets the name of reverse record to the caller with manual gas limit
+  //   'setNameForAddr(address,address,address,string)',
+  //   DTCCWalletAddress,
+  //   DTCCWalletAddress,
+  //   resolver.address,
+  //   `${dtccWalletSubdomain}.${name}.${tld}`,
+  // )
+
+  // console.log(
+  //   `Set reverse record for ${DTCCWalletAddress} to ${dtccWalletSubdomain}.${name}.${tld}`,
+  // )
+
+  // //###################################################################################
+  // //###################################################################################
+  // //###############        CONSOLE LOGS DETAILS            ############################
+  // //###################################################################################
+  // //###################################################################################
+
+  // console.log('')
+  // const forwardName = `${subdomainZach}.${name}.${tld}`
+  // const forwardResolver = await hre.deployments.read(
+  //   'ENSRegistry',
+  //   'resolver',
+  //   utils.namehash(forwardName),
+  // )
+  // const forwardRecord = await hre.deployments.read(
+  //   'PublicResolver',
+  //   {},
+  //   'addr(bytes32)',
+  //   utils.namehash(forwardName),
+  // )
+  // console.log('Forward Name:', forwardName)
+  // console.log('Forward Resolver:', forwardResolver)
+  // console.log('Forward Record:', forwardRecord)
+
+  // const reverseName = `${forwardRecord.slice(2).toLowerCase()}.addr.reverse`
+
+  // const reverseResolver = await hre.deployments.read(
+  //   'ENSRegistry',
+  //   'resolver',
+  //   utils.namehash(reverseName),
+  // )
+
+  // const reverseRecord = await hre.deployments.read(
+  //   'PublicResolver',
+  //   {},
+  //   'name(bytes32)',
+  //   utils.namehash(reverseName),
+  // )
+
+  // console.log('')
+  // console.log('Reverse Name:', reverseName)
+  // console.log('Reverse Resolver:', reverseResolver)
+  // console.log('Reverse Record:', reverseRecord)
+
+  // //################################
+  // //## SECOND DOMAIN CONSOLE LOGS ##
+  // //################################
+
+  // const forwardName2 = `${dtccWalletSubdomain}.${name}.${tld}`
+  // const forwardResolver2 = await hre.deployments.read(
+  //   'ENSRegistry',
+  //   'resolver',
+  //   utils.namehash(forwardName2),
+  // )
+  // const forwardRecord2 = await hre.deployments.read(
+  //   'PublicResolver',
+  //   {},
+  //   'addr(bytes32)',
+  //   utils.namehash(forwardName2),
+  // )
+
+  // console.log('')
+  // console.log('Forward Name:', forwardName2)
+  // console.log('Forward Resolver:', forwardResolver2)
+  // console.log('Forward Record:', forwardRecord2)
+
+  // const reverseName2 = `${forwardRecord2.slice(2).toLowerCase()}.addr.reverse`
+  // const reverseResolver2 = await hre.deployments.read(
+  //   'ENSRegistry',
+  //   'resolver',
+  //   utils.namehash(reverseName2),
+  // )
+  // const reverseRecord2 = await hre.deployments.read(
+  //   'PublicResolver',
+  //   {},
+  //   'name(bytes32)',
+  //   utils.namehash(reverseName2),
+  // )
+  // console.log('')
+  // console.log('Reverse Name:', reverseName2)
+  // console.log('Reverse Resolver:', reverseResolver2)
+  // console.log('Reverse Record:', reverseRecord2)
+
+  // const publicReverseResolver = await ethers.getContractAt(
+  //   'PublicResolver',
+  //   reverseResolver,
+  // )
+  // const domainName1 = await publicReverseResolver.name(
+  //   utils.namehash(reverseName),
+  // )
+  // const domainName2 = await publicReverseResolver.name(
+  //   utils.namehash(reverseName2),
+  // )
+
+  // console.log('')
+  // console.log('First Domain Name Registered Is: ', domainName1)
+  // console.log('Second Domain Name Registered Is: ', domainName2)
 }
