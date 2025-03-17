@@ -4,7 +4,6 @@ import "./ENS.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../resolvers/Resolver.sol";
 import "../reverseRegistrar/ReverseRegistrar.sol";
-import "hardhat/console.sol";
 
 /**
  * A registrar that allocates subdomains to the first person to claim them,
@@ -15,15 +14,13 @@ contract FIFSRegistrarWithExpiration is Ownable {
     bytes32 public rootNode;
     address public reverseRegistrar;
     bytes32 public rootNameNode;
+    bytes32 public rootName;
 
     // A map of expiration times for each subdomain (label hash)
     mapping(bytes32 => uint256) public expiries;
 
     // A grace period after expiration during which the domain can still be renewed
     uint256 public constant GRACE_PERIOD = 90 days;
-
-    bytes32 public constant TLD = keccak256(abi.encodePacked("dda"));
-    bytes32 public constant SUBDOMAIN = keccak256(abi.encodePacked("dtcc"));
 
     // Events
     event NameRegistered(
@@ -38,13 +35,14 @@ contract FIFSRegistrarWithExpiration is Ownable {
     /**
      * @dev Constructor.
      * @param ensAddr The address of the ENS registry.
-     * @param node The node (namehash) that this registrar administers.
+     * @param _rootNode The node (namehash) that this registrar administers.
+     * @param _rootName The subdomain of root name.
      */
-    constructor(ENS ensAddr, bytes32 node, bytes32 rootName) {
+    constructor(ENS ensAddr, bytes32 _rootNode, bytes32 _rootName) {
         ens = ensAddr;
-        rootNode = node;
-
-        rootNameNode = keccak256(abi.encodePacked(node, rootName));
+        rootNode = _rootNode;
+        rootName = _rootName;
+        rootNameNode = keccak256(abi.encodePacked(_rootNode, _rootName));
     }
 
     modifier only_owner(bytes32 label) {
@@ -103,8 +101,6 @@ contract FIFSRegistrarWithExpiration is Ownable {
 
         // Get the subdomain so we can configure it
         ens.setSubnodeOwner(rootNameNode, label, address(this));
-
-        // Calculate the subnode hash using the TLD and SUBDOMAIN constants
 
         // Set the subdomain's resolver
         ens.setResolver(subnode, address(resolver));
