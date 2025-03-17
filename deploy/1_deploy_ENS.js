@@ -2,6 +2,8 @@ const { constants, utils } = require('ethers')
 const { AddressZero, HashZero } = constants
 const { ethers } = require('hardhat')
 
+// eth
+// dda
 // zach.dtcc.eth
 const tld = 'dda' //dda
 const name = 'dtcc' // dtcc
@@ -165,7 +167,7 @@ module.exports = async function main() {
   // Why does register work even though deployer.address is not the owner? Because - it is brand new domain name
   await hre.deployments.execute(
     'FIFSRegistrarWithExpiration', //root node is eth which is set during deployment
-    { from: DTCCWallet.address }, // deployer is the current owner of the .eth namespace
+    { from: deployer.address }, // deployer is the current owner of the .eth namespace
     'doRegistration',
     subdomainWallet,
     DTCCWallet.address, // now owner is the one who owns the name dtcc.eth
@@ -216,7 +218,7 @@ module.exports = async function main() {
   // Why does register work even though deployer.address is not the owner? Because - it is brand new domain name
   await hre.deployments.execute(
     'FIFSRegistrarWithExpiration', //root node is eth which is set during deployment
-    { from: ZACHWallet.address }, // deployer is the current owner of the .eth namespace
+    { from: deployer.address }, // deployer is the current owner of the .eth namespace
     'doRegistration',
     subdomainZach,
     ZACHWallet.address, // now owner is the one who owns the name dtcc.eth

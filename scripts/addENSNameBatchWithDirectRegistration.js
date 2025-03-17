@@ -5,9 +5,9 @@ const utils = ethers.utils
 const tld = 'dda'
 
 const ensRegistryAddress = '0xce75A95160D96F5388437993aB5825F322426E04' // dummy address - change to real address
-const registrarAddress = '0x0e52147E1aD0d48F76074214e0782EE4A6Dca120' // dummy address - change to real address
-const reverseRegistrarAddress = '0xb9AdA6B44E4CFF8FE00443Fadf8ad006CfCc2d10' // dummy address - change to real address
-const publicResolverAddress = '0x79dFFC4DcBb1f598EC3741E939f22bAAF56448Da' // dummy address - change to real address
+const registrarAddress = '0xADd9227440f4BB447142b6df006016EA7c0773ba' // dummy address - change to real address
+const reverseRegistrarAddress = '0xfA104bC5010410a03d2846c04373093Ca709c4C6' // dummy address - change to real address
+const publicResolverAddress = '0x63C478Bdff0F452Ca9B295eb4E2AAbA064ABDB13' // dummy address - change to real address
 
 const batchData = [
   {

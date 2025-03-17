@@ -214,7 +214,7 @@ contract FIFSRegistrarWithExpiration is Ownable {
         address owner
     ) internal {
         ReverseRegistrar(reverseRegistrar).setNameForAddr(
-            msg.sender,
+            owner,
             owner,
             resolver,
             string.concat(name, ".dtcc.dda")
