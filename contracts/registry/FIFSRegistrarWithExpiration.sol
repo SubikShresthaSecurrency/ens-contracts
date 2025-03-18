@@ -218,7 +218,7 @@ contract FIFSRegistrarWithExpiration is Ownable {
             owner,
             owner,
             resolver,
-            string.concat(name, ".dtcc.ssa")
+            string.concat(name, ".dtcc.dda")
         );
     }
 }

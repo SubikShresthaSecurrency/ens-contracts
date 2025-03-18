@@ -5,7 +5,7 @@ const { ethers } = require('hardhat')
 // eth
 // dda
 // zach.dtcc.eth
-const tld = 'ssa' //dda
+const tld = 'dda' //dda
 const name = 'dtcc' // dtcc
 const subdomainZach = 'zach'
 const subdomainWallet = 'wallet'
@@ -49,16 +49,16 @@ module.exports = async function main() {
   console.log('Deployed Registrar at', registrar.address)
 
   // allow the registrar to create names within the tld namespace
-  if (registrar.newlyDeployed) {
-    tx = await ENSRegistry.setSubnodeOwner(
-      HashZero,
-      utils.id(tld),
-      deployer.address, // deployer is now the owner
-    )
-    console.log(1)
+  // if (registrar.newlyDeployed) {
+  //   tx = await ENSRegistry.setSubnodeOwner(
+  //     HashZero,
+  //     utils.id(tld),
+  //     deployer.address, // deployer is now the owner
+  //   )
+  //   console.log(1)
 
-    await tx.wait()
-  }
+  //   await tx.wait()
+  // }
 
   tx = await ENSRegistry.setSubnodeOwner(
     utils.namehash(tld),
@@ -228,7 +228,7 @@ module.exports = async function main() {
 
   const forwardNameZach = `${subdomainZach}.${name}.${tld}`
 
-  const forwardResolverZach = ENSRegistry.resolver(
+  const forwardResolverZach = await ENSRegistry.resolver(
     utils.namehash(forwardNameZach),
   )
 
