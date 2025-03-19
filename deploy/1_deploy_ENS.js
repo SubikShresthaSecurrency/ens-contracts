@@ -12,7 +12,7 @@ const DTCCWalletAddress = '0x720888D077b1561E3185D48A7539AEA745F33A38'
 const ZACHWalletAddress = '0x41D42c2DE07000f286CbFa1c17b2A5FA5f105656'
 
 module.exports = async function main() {
-  const [deployer] = await ethers.getSigners()
+  const [deployer, owner] = await ethers.getSigners()
 
   // Registry is the main contract that stores all the information about the domain
   // Like subdomainOwner, owner, resolver etc
@@ -148,7 +148,7 @@ module.exports = async function main() {
 
   console.log(`Registered ${name}.${tld} to`, deployer.address)
 
-  // Set the owner of the subdomain - zach.dtcc.eth to owner. dtcc.eth is concatenated with zach as keccak
+  //Set the owner of the subdomain - zach.dtcc.eth to owner. dtcc.eth is concatenated with zach as keccak
   await hre.deployments.execute(
     'ENSRegistry',
     { from: deployer.address },
@@ -158,6 +158,23 @@ module.exports = async function main() {
     deployer.address, // ZACHWallet is the owner. Now the wallet can setApprovalForAll for the domain. If it wants to transfer ownership it needs to call setSubnodeOwner again
   )
 
+  await hre.deployments.execute(
+    'FIFSRegistrarWithExpiration', //root node is eth which is set during deployment
+    { from: deployer.address }, // deployer is the current owner of the .eth namespace
+    'register',
+    utils.namehash(`${subdomainZach}.${name}`),
+    owner.address, // now owner is the one who owns the name dtcc.eth
+    duration,
+  )
+
+  const available = await hre.deployments.read(
+    'FIFSRegistrarWithExpiration',
+    { from: deployer.address },
+    'available(bytes32)',
+    utils.namehash(`${subdomainZach}.${name}`),
+  )
+
+  console.log('available ----', available)
   console.log('Set subdomainZach owner for', `${subdomainZach}.${name}.${tld}`)
 
   // Set the resolver for the subdomainZach - zach.dtcc.eth to resolver
