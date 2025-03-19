@@ -28,14 +28,84 @@ const batchData = [
   {
     name: 'dtcc',
     subdomains: [
-      { name: 'zach56', address: '0x8aEE29EaA4CE75FA53A7F63EEDA722aADaa21DC9' },
       {
-        name: 'wallet56',
-        address: '0xde6Ef25c30e990415a9C0F67f1cCdc2080Ee8045',
+        name: 'margincoreny',
+        address: '0x14D6F2201FC8c8cfd65Dd349dD53d165198C22f7',
+      },
+      {
+        name: 'margincoretokyo',
+        address: '0x803B307bbEcB8D8E55959C0F21cD6a5E008D58Ef',
+      },
+      {
+        name: 'margincoreparis',
+        address: '0x81f845B586fFf45C68F01D2B4d9c0DB727a8cE3d',
+      },
+      {
+        name: 'bravobank',
+        address: '0x88Cf1538EEB86462C2AC66702A80cC6a8EC4fD04',
+      },
+      {
+        name: 'socgen',
+        address: '0x93f0BC752C988aB66DEA14dD8Aa6176b2B511381',
+      },
+      {
+        name: 'wellington',
+        address: '0xaEbA76b426fEE6680872a84942fda1bC4D1A87Ef',
+      },
+      {
+        name: 'bankofamerica',
+        address: '0x6774f079Dd360cf228d09737BC3657B8672bABBB',
+      },
+      {
+        name: 'sterlingbank',
+        address: '0xfABB6B1528B83D91941c3CB58e7954522c24d8CA',
+      },
+      {
+        name: 'fidelity',
+        address: '0xce1279683e3A060Df76E72f0D1717CF95D42Be9b',
+      },
+      {
+        name: 'ficc',
+        address: '0x37a7F8B45f7dCCC4d88eCf8B8866F056a512395F',
+      },
+      {
+        name: 'nscc',
+        address: '0x801839DebB7061406EF738d507D05830F2fF43f1',
+      },
+      {
+        name: 'jscc',
+        address: '0x01d2D3da7a42F64e7Dc6Ae405F169836556adC86',
+      },
+      {
+        name: 'cryptoex1',
+        address: '0x57122554635EF92adC3c9252Ea996ce9Fb72537C',
+      },
+      {
+        name: 'dtccda',
+        address: '0xc31a19c17981b6ACd925Af8c8F5BF7a63aeAA028',
+      },
+      {
+        name: 'dtcc',
+        address: '0x9300787cFe46c0468cca4aa1b439fa627FAa28C7',
+      },
+      {
+        name: 'bny',
+        address: '0xF466381A18b44Ef898B3e95d616A8Cae53a560D0',
+      },
+      {
+        name: 'euroclear',
+        address: '0x1BE6Fe727aCD01f86ab5b5C7b57d42152c4CB771',
+      },
+      {
+        name: 'blackrock',
+        address: '0xAF0AD51DaD551833495cD679344D71fB6990d3a2',
+      },
+      {
+        name: 'cryptoex2',
+        address: '0xfaB5663a0d7F277F926381B5B5b1C2078288700E',
       },
     ],
   },
-  // Add more entries as needed
 ]
 
 async function main() {
@@ -56,6 +126,7 @@ async function main() {
   )
 
   for (const entry of batchData) {
+    let tx
     const namehash = utils.namehash(`${entry.name}.${tld}`)
     try {
       // Register the main domain
@@ -63,7 +134,8 @@ async function main() {
       // Add your registration logic here
 
       // Set resolver for the main domain
-      await ENSRegistry.setResolver(namehash, publicResolverAddress)
+      tx = await ENSRegistry.setResolver(namehash, publicResolverAddress)
+      await tx.wait()
       console.log(`Set resolver for ${entry.name}.${tld}`)
 
       for (const subdomain of entry.subdomains) {
@@ -73,34 +145,44 @@ async function main() {
         console.log(`Setting subdomain ${subdomain.name}.${entry.name}.${tld}`)
 
         // Set subdomain owner
-        await ENSRegistry.setSubnodeOwner(
+        tx = await ENSRegistry.setSubnodeOwner(
           namehash,
           utils.keccak256(utils.toUtf8Bytes(subdomain.name)),
           deployer.address,
         )
+        await tx.wait()
+
         console.log(
           `Set subdomain owner for ${subdomain.name}.${entry.name}.${tld}`,
         )
 
         // Set resolver for subdomain
-        await ENSRegistry.setResolver(subdomainNamehash, publicResolverAddress)
+        tx = await ENSRegistry.setResolver(
+          subdomainNamehash,
+          publicResolverAddress,
+        )
+        await tx.wait()
         console.log(`Set resolver for ${subdomain.name}.${entry.name}.${tld}`)
 
         // Set forward record
-        await PublicResolver['setAddr(bytes32,address)'](
+        tx = await PublicResolver['setAddr(bytes32,address)'](
           subdomainNamehash,
           subdomain.address,
         )
+
+        await tx.wait()
         console.log(
           `Set forward record for ${subdomain.name}.${entry.name}.${tld} to ${subdomain.address}`,
         )
 
-        await ReverseRegistrar.connect(deployer).setNameForAddr(
+        tx = await ReverseRegistrar.connect(deployer).setNameForAddr(
           subdomain.address,
           subdomain.address,
           publicResolverAddress,
           `${subdomain.name}.${entry.name}.${tld}`,
         )
+
+        await tx.wait()
 
         console.log(
           `Set reverse record for ${subdomain.address} to ${subdomain.name}.${entry.name}.${tld}`,
@@ -114,6 +196,7 @@ async function main() {
         const forwardRecord = await PublicResolver['addr(bytes32)'](
           utils.namehash(forwardName),
         )
+        console.log('')
         console.log('Forward Name:', forwardName)
         console.log('Forward Resolver:', forwardResolver)
         console.log('Forward Record:', forwardRecord)
@@ -128,6 +211,8 @@ async function main() {
         const reverseRecord = await PublicResolver['name(bytes32)'](
           utils.namehash(reverseName),
         )
+        console.log('')
+
         console.log('Reverse Name:', reverseName)
         console.log('Reverse Resolver:', reverseResolver)
         console.log('Reverse Record:', reverseRecord)
@@ -139,6 +224,8 @@ async function main() {
         const domainName = await publicReverseResolver.name(
           utils.namehash(reverseName),
         )
+        console.log('')
+
         console.log('Domain Name Registered Is: ', domainName)
       }
     } catch (error) {
