@@ -24,8 +24,6 @@ const ensRegistryAddress = '0x6A1E3042922E0252befBD385Ee35ce48A9806904' // dummy
 const registrarAddress = '0x79EAFe3655C0E94b0CE180E76a4bBa4B3ED24555' // dummy address - change to real address
 const reverseRegistrarAddress = '0x6D33498AF82D2D667e2626fCbbf56685161c2F5a' // dummy address - change to real address
 const publicResolverAddress = '0x1a9522C0C88060cDb59AABA2c52648f19aCc7329' // dummy address - change to real address
-const duration = 86400 * 365
-const labelhash = (label) => utils.keccak256(utils.toUtf8Bytes(label))
 
 const batchData = [
   {
