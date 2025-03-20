@@ -25,13 +25,15 @@ const registrarAddress = '0x79EAFe3655C0E94b0CE180E76a4bBa4B3ED24555' // dummy a
 const reverseRegistrarAddress = '0x6D33498AF82D2D667e2626fCbbf56685161c2F5a' // dummy address - change to real address
 const publicResolverAddress = '0x1a9522C0C88060cDb59AABA2c52648f19aCc7329' // dummy address - change to real address
 const duration = 86400 * 365
+const labelhash = (label) => utils.keccak256(utils.toUtf8Bytes(label))
+
 const batchData = [
   {
     name: 'dtcc',
     subdomains: [
       {
-        name: 'margincore-ny',
-        address: '0x14D6F2201FC8c8cfd65Dd349dD53d165198C22f7',
+        name: 'mr-namen',
+        address: '0x591445835e461334b9a6020241fc167c90c4141d',
       },
       // {
       //   name: 'margincore-tokyo',
@@ -134,8 +136,6 @@ const batchData = [
 ]
 
 async function main() {
-  const [deployer] = await ethers.getSigners()
-
   // Get the ENSRegistry contract
   const ENSRegistry = await ethers.getContractAt(
     'ENSRegistry',
@@ -155,65 +155,86 @@ async function main() {
   )
 
   for (const entry of batchData) {
-    let [...accounts] = await ethers.getSigners()
+    let tx
+    let [deployer] = await ethers.getSigners()
 
-    const namehash = utils.namehash(`${entry.name}.${tld}`)
     try {
-      let i = 0
       for (const subdomain of entry.subdomains) {
         const subdomainNamehash = utils.namehash(
           `${subdomain.name}.${entry.name}.${tld}`,
         )
 
-        assert.equal(
-          accounts[i].address,
-          subdomain.address,
-          'Account and subdomain address should be same',
-        )
-
         console.log(`Setting subdomain ${subdomain.name}.${entry.name}.${tld}`)
-
-        tx = await FIFSRegistrar.connect(accounts[i]).register(
-          utils.namehash(`${subdomain.name}.${entry.name}`),
-          subdomain.address,
-          duration,
-          { gasLimit: 1000000 },
-        )
-
-        await tx.wait()
-
-        const isAvailable = await FIFSRegistrar.available(
-          utils.namehash(`${subdomain.name}.${entry.name}`),
-        )
-        console.log('is available. ...', isAvailable)
 
         console.log(
           `Set subdomain owner for ${subdomain.name}.${entry.name}.${tld}`,
         )
 
+        console.log(deployer.address)
+
+        tx = await ENSRegistry.connect(deployer).setSubnodeOwner(
+          utils.namehash(`${entry.name}.${tld}`),
+          utils.id(subdomain.name),
+          deployer.address,
+          { gasLimit: 1000000 },
+        )
+
+        await tx.wait()
+
+        console.log(
+          'Set subnode owner for',
+          `${subdomain.name}.${entry.name}.${tld}`,
+        )
+
         // Set resolver for subdomain
-        tx = await ENSRegistry.connect(accounts[i]).setResolver(
+        tx = await ENSRegistry.connect(deployer).setResolver(
           subdomainNamehash,
           publicResolverAddress,
         )
 
         await tx.wait()
+
         console.log(`Set resolver for ${subdomain.name}.${entry.name}.${tld}`)
 
-        // Set forward record
-        tx = await PublicResolver['setAddr(bytes32,address)'](
+        //Set forward record
+        tx = await PublicResolver.connect(deployer)['setAddr(bytes32,address)'](
           subdomainNamehash,
           subdomain.address,
-          { from: accounts[i] },
         )
 
         await tx.wait()
+
         console.log(
           `Set forward record for ${subdomain.name}.${entry.name}.${tld} to ${subdomain.address}`,
         )
-        console.log(ReverseRegistrar.address)
+        // console.log(ReverseRegistrar.address)
 
-        tx = await ReverseRegistrar.connect(accounts[i]).setNameForAddr(
+        // // tx = await ReverseRegistrar.connect(accounts[i]).setNameForAddr(
+        // //   subdomain.address,
+        // //   subdomain.address,
+        // //   publicResolverAddress,
+        // //   `${subdomain.name}.${entry.name}.${tld}`
+        // )
+
+        // we do the configuration and set the reverse registrar as the owner
+        //   await hre.deployments.execute(
+        //     'ENSRegistry',
+        //     { from: deployer.address },
+        //     'setSubnodeOwner',
+        //     utils.namehash('reverse'),
+        //     utils.id('addr'),
+        //     reverseRegistrar.address,
+        //   )
+        // }
+
+        // tx = await ENSRegistry.setSubnodeOwner(
+        //     utils.namehash('reverse'),
+        //     utils.id('addr'),
+        //     ReverseRegistrar.address,
+        // )
+        // await tx.wait();
+
+        tx = await ReverseRegistrar.connect(deployer).setNameForAddr(
           subdomain.address,
           subdomain.address,
           publicResolverAddress,
@@ -246,26 +267,27 @@ async function main() {
         const reverseResolver = await ENSRegistry.resolver(
           utils.namehash(reverseName),
         )
-        const reverseRecord = await PublicResolver['name(bytes32)'](
-          utils.namehash(reverseName),
-        )
+
         console.log('')
 
         console.log('Reverse Name:', reverseName)
         console.log('Reverse Resolver:', reverseResolver)
-        console.log('Reverse Record:', reverseRecord)
 
         const publicReverseResolver = await ethers.getContractAt(
           'PublicResolver',
           reverseResolver,
         )
+        const reverseRecord = await publicReverseResolver.name(
+          utils.namehash(reverseName),
+        )
+        console.log('Reverse Record:', reverseRecord)
+
         const domainName = await publicReverseResolver.name(
           utils.namehash(reverseName),
         )
         console.log('')
 
         console.log('Domain Name Registered Is: ', domainName)
-        i++
       }
     } catch (error) {
       console.error(`Error processing ${entry.name}.${tld}:`, error)

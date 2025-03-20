@@ -21,8 +21,8 @@ const { ethers } = require('hardhat')
 const tld = 'eth'
 // do a test registration
 const name = 'dtcc'
-const subdomain = 'world'
-const walletAddress = '0xc5388c6db23468b8037b790aa778e2088150794b'
+const subdomain = 'test-234'
+const walletAddress = '0x59Dc52FbEc0e6a1F5762D673234a7e83Cabcc200'
 
 // const ensRegistryAddress = '0x6A1E3042922E0252befBD385Ee35ce48A9806904' //dummy address - change to real address
 // const registrarAddress = '0x79EAFe3655C0E94b0CE180E76a4bBa4B3ED24555' //dummy address - change to real address
@@ -30,10 +30,10 @@ const walletAddress = '0xc5388c6db23468b8037b790aa778e2088150794b'
 // const publicResolverAddress = '0x1a9522C0C88060cDb59AABA2c52648f19aCc7329' //dummy address - change to real address
 // const walletAddress = '0xc5388c6db23468b8037b790aa778e2088150794b'
 
-const ensRegistryAddress = '0xce75A95160D96F5388437993aB5825F322426E04' // dummy address - change to real address
-const registrarAddress = '0x0e52147E1aD0d48F76074214e0782EE4A6Dca120' // dummy address - change to real address
-const reverseRegistrarAddress = '0x8aEE29EaA4CE75FA53A7F63EEDA722aADaa21DC9' // dummy address - change to real address
-const publicResolverAddress = '0xde6Ef25c30e990415a9C0F67f1cCdc2080Ee8045' // dummy address - change to real address
+const ensRegistryAddress = '0x6A1E3042922E0252befBD385Ee35ce48A9806904' // dummy address - change to real address
+const registrarAddress = '0x79EAFe3655C0E94b0CE180E76a4bBa4B3ED24555' // dummy address - change to real address
+const reverseRegistrarAddress = '0x6D33498AF82D2D667e2626fCbbf56685161c2F5a' // dummy address - change to real address
+const publicResolverAddress = '0x1a9522C0C88060cDb59AABA2c52648f19aCc7329' // dummy address - change to real address
 
 // const ensRegistryAddress = '0xce75A95160D96F5388437993aB5825F322426E04' //dummy address - change to real address
 // const registrarAddress = '0x0e52147E1aD0d48F76074214e0782EE4A6Dca120' //dummy address - change to real address
@@ -80,7 +80,7 @@ async function main() {
 
   await tx.wait()
 
-  console.log('Set subdomain owner for', `${name}.${tld}.${subdomain}`)
+  console.log('Set subdomain owner for', `${subdomain}.${name}.${tld}`)
 
   // Set the resolver for the subdomain - shyam.dtcc.eth to resolver
   // resolver is the contract address of PublicResolver
@@ -110,6 +110,7 @@ async function main() {
     publicResolverAddress,
     `${subdomain}.${name}.${tld}`,
   )
+
   await tx.wait()
   console.log(
     `Set reverse record for ${walletAddress} to`,
