@@ -46,7 +46,7 @@ const config: HardhatUserConfig = {
     },
     besu: {
       url: process.env.BESU_RPC_URL || '',
-      chainId: 1337,
+      // chainId: 1337,
       accounts: process.env.BESU_PRIVATE_KEY
         ? [process.env.BESU_PRIVATE_KEY]
         : [],

@@ -5,11 +5,11 @@ const { ethers } = require('hardhat')
 // zach.dtcc.eth
 const tld = 'eth'
 const name = 'dtcc'
-const subdomainZach = 'zach'
-const dtccWalletSubdomain = 'wallet'
+const subdomainZach = 'test'
+const dtccWalletSubdomain = 'testdemo'
 
-const DTCCWalletAddress = '0x720888D077b1561E3185D48A7539AEA745F33A38'
-const ZACHWalletAddress = '0x41D42c2DE07000f286CbFa1c17b2A5FA5f105656'
+const DTCCWalletAddress = '0xF71d93B72b7cA6C12d9deb0a0Ace7aF31Ae889F3'
+const ZACHWalletAddress = '0x7Bc15d8FA3B1F1c7f8FbA79ECA295bF35b8805ed'
 
 module.exports = async function main() {
   const [deployer, owner] = await ethers.getSigners()
@@ -163,7 +163,7 @@ module.exports = async function main() {
     { from: deployer.address }, // deployer is the current owner of the .eth namespace
     'register',
     utils.namehash(`${subdomainZach}.${name}`),
-    owner.address, // now owner is the one who owns the name dtcc.eth
+    deployer.address, // now owner is the one who owns the name dtcc.eth
     duration,
   )
 
@@ -174,7 +174,6 @@ module.exports = async function main() {
     utils.namehash(`${subdomainZach}.${name}`),
   )
 
-  console.log('available ----', available)
   console.log('Set subdomainZach owner for', `${subdomainZach}.${name}.${tld}`)
 
   // Set the resolver for the subdomainZach - zach.dtcc.eth to resolver

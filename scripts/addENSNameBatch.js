@@ -20,103 +20,131 @@ const assert = require('assert')
 // Set reverse record for 0x720888D077b1561E3185D48A7539AEA745F33A38 to wallet.dtcc.eth
 
 const tld = 'eth'
-const ensRegistryAddress = '0x6A1E3042922E0252befBD385Ee35ce48A9806904' // dummy address - change to real address
-const registrarAddress = '0x79EAFe3655C0E94b0CE180E76a4bBa4B3ED24555' // dummy address - change to real address
-const reverseRegistrarAddress = '0x6D33498AF82D2D667e2626fCbbf56685161c2F5a' // dummy address - change to real address
-const publicResolverAddress = '0x1a9522C0C88060cDb59AABA2c52648f19aCc7329' // dummy address - change to real address
+
+/// UAT
+const ensRegistryAddress = '0xC00890a3B0E065e222112348BC81A2AA97bb6e18' // dummy address - change to real address
+const registrarAddress = '0xe93E918511f380215C8F399ce376dA17181531A2' // dummy address - change to real address
+const reverseRegistrarAddress = '0x69907dF7057d58BF26E337dE3E1262d04f766B7a' // dummy address - change to real address
+const publicResolverAddress = '0x1689fD1075278D2Ce44fe9ED8562217a68953EF2' // dummy address - change to real address
+
+/// DEV-BESU
+// const ensRegistryAddress = '0x6A1E3042922E0252befBD385Ee35ce48A9806904' // dummy address - change to real address
+// const registrarAddress = '0x79EAFe3655C0E94b0CE180E76a4bBa4B3ED24555' // dummy address - change to real address
+// const reverseRegistrarAddress = '0x6D33498AF82D2D667e2626fCbbf56685161c2F5a' // dummy address - change to real address
+// const publicResolverAddress = '0x1a9522C0C88060cDb59AABA2c52648f19aCc7329' // dummy address - change to real address
 
 const batchData = [
   {
-    name: 'dtcc',
+    name: 'blockdaemon',
     subdomains: [
+      // {
+      //   name: 'cryptoex',
+      //   address: '0xd8c464d4d7375b76fd6858a6e8c02b46c26b2495',
+      // },
+      // {
+      //   name: 'sterling-bank',
+      //   address: '0x44ab7339d6530e50442b91c338b087e9bcc2c3c2',
+      // },
       {
-        name: 'margincore-ny',
-        address: '0x14D6F2201FC8c8cfd65Dd349dD53d165198C22f7',
-      },
-      {
-        name: 'margincore-tokyo',
-        address: '0x803B307bbEcB8D8E55959C0F21cD6a5E008D58Ef',
-      },
-      {
-        name: 'margincore-paris',
-        address: '0x81f845B586fFf45C68F01D2B4d9c0DB727a8cE3d',
+        name: 'yan-asset-management',
+        address: '0xa633f7dc7b939f1edb3d7adbd36540e43779679a',
       },
       {
         name: 'bravo-bank',
-        address: '0x88Cf1538EEB86462C2AC66702A80cC6a8EC4fD04',
+        address: '0x3e618aebb1630500b580174d974a340bd72bd678',
       },
       {
-        name: 'socgen',
-        address: '0x93f0BC752C988aB66DEA14dD8Aa6176b2B511381',
+        name: 'margincore-paris',
+        address: '0x8ca41d8a274ebe7495d34b4f311a5316d7173022',
       },
       {
-        name: 'wellington',
-        address: '0xaEbA76b426fEE6680872a84942fda1bC4D1A87Ef',
+        name: 'margincore-nyc',
+        address: '0x6a4ebdb5b05782c41ef788dd3ea5fa6ef7319e6d',
       },
       {
-        name: 'bank-of-america',
-        address: '0x6774f079Dd360cf228d09737BC3657B8672bABBB',
-      },
-      {
-        name: 'sterling-bank',
-        address: '0xfABB6B1528B83D91941c3CB58e7954522c24d8CA',
-      },
-      {
-        name: 'fidelity',
-        address: '0xce1279683e3A060Df76E72f0D1717CF95D42Be9b',
-      },
-      {
-        name: 'ficc',
-        address: '0x37a7F8B45f7dCCC4d88eCf8B8866F056a512395F',
-      },
-      {
-        name: 'nscc',
-        address: '0x801839DebB7061406EF738d507D05830F2fF43f1',
-      },
-      {
-        name: 'jscc',
-        address: '0x01d2D3da7a42F64e7Dc6Ae405F169836556adC86',
-      },
-      {
-        name: 'crypto-ex1',
-        address: '0x57122554635EF92adC3c9252Ea996ce9Fb72537C',
-      },
-      {
-        name: 'dtcc-da',
-        address: '0xc31a19c17981b6ACd925Af8c8F5BF7a63aeAA028',
-      },
-      {
-        name: 'dtcc',
-        address: '0x9300787cFe46c0468cca4aa1b439fa627FAa28C7',
-      },
-      {
-        name: 'bny',
-        address: '0xF466381A18b44Ef898B3e95d616A8Cae53a560D0',
-      },
-      {
-        name: 'euroclear',
-        address: '0x1BE6Fe727aCD01f86ab5b5C7b57d42152c4CB771',
-      },
-      {
-        name: 'blackrock',
-        address: '0xAF0AD51DaD551833495cD679344D71fB6990d3a2',
-      },
-      {
-        name: 'crypto-ex2',
-        address: '0xfaB5663a0d7F277F926381B5B5b1C2078288700E',
-      },
-      {
-        name: 'jp-morgan',
-        address: '0x4ea3efe0207a9A208C0da93A3f9A7A898393fe4D',
+        name: 'margincore-tokyo',
+        address: '0x00a445b6d6f957121bc292c8eaddb34d0951cb0b',
       },
       {
         name: 'margincore-london',
-        address: '0x9d1aE6d84e3A385e667CeE70d4dFe29Ff0ea7605',
+        address: '0x1dca2e7385dcce0c3bb4f21365ef57edef4a76b1',
       },
       {
-        name: 'yan-asset-manager',
-        address: '0xbB22D30cF7075339FbbC12035AFBd8aa23C7f355',
+        name: 'bny',
+        address: '0xe87e01dcb9d5c2615f0cb0bc2a4df178d9ea308b',
       },
+      {
+        name: 'euroclear',
+        address: '0x60361e714fa028e9e83f5578abf2cece70e06bfd',
+      },
+      {
+        name: 'bank-of-japan',
+        address: '0xc43d63beffebb91d8c98408de38654bb7b0c3640',
+      },
+      {
+        name: 'clearstream',
+        address: '0x0dd589afa8badb2bd63bd79e4639d37c6a06854f',
+      },
+      {
+        name: 'wellington',
+        address: '0xd01b97b11c7823413039d32a1ed8dbb52c7f9033',
+      },
+      {
+        name: 'jpx',
+        address: '0x59ef8eb9bacee1988a0bfa92db49292645e0e2c9',
+      },
+      {
+        name: 'bny-triparty',
+        address: '0xfa303dee7264057353154cfae916ce19f540de96',
+      },
+      {
+        name: 'euroclear-triparty',
+        address: '0x4dc9e176e9550d76eb74789d84e31b655ffc31f8',
+      },
+      {
+        name: 'ubs',
+        address: '0x6770cd3f177a61cf7d99301b401525fcab11bbc5',
+      },
+      {
+        name: 'socgen',
+        address: '0xa492ce538d0fdf2a84f76bdc21e8baf371eca5ff',
+      },
+      {
+        name: 'ficc',
+        address: '0x3442cbdacf8cf3d2c1ef8c346130368db826d6eb',
+      },
+      {
+        name: 'nscc',
+        address: '0xa683b8689c3d613707633b6888460a1b701e74ea',
+      },
+      {
+        name: 'jasdec',
+        address: '0xcb6322559f56ea5d2efdf4cd19636b355e006e62',
+      },
+      {
+        name: 'dtcc',
+        address: '0x4e9f588cb15f3a061f2774350fcaa2b9b3cf5c13',
+      },
+      {
+        name: 'fidelity',
+        address: '0x92ee16147024c88b6e209d51c160a204799ff331',
+      },
+      {
+        name: 'dtcc-da',
+        address: '0x03c15aed4298e55d0d4a28efc84da80d15bff7e2',
+      },
+      {
+        name: 'franklin-templeton',
+        address: '0xb34f70ead207e6f780e4f8e109881a67aed8b6df',
+      },
+      // {
+      //   name: 'libera',
+      //   address: '0x4f68348a4659c5625ab1f35dd65a9785ab23b4e2',
+      // },
+      // {
+      //   name: 'fnality',
+      //   address: '0x42b6fca6ea747455e48a43757262a77fc39f68bf',
+      // },
     ],
   },
 ]
@@ -181,6 +209,18 @@ async function main() {
         await tx.wait()
 
         console.log(`Set resolver for ${subdomain.name}.${entry.name}.${tld}`)
+
+        //Set name record
+        tx = await PublicResolver.connect(deployer)['setName(bytes32,string)'](
+          subdomainNamehash,
+          `${subdomain.name}.${entry.name}.${tld}`,
+        )
+
+        await tx.wait()
+
+        console.log(
+          `Set name for ${subdomainNamehash} to ${subdomain.name}.${entry.name}.${tld}`,
+        )
 
         //Set forward record
         tx = await PublicResolver.connect(deployer)['setAddr(bytes32,address)'](
